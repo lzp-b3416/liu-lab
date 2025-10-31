@@ -3,41 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>每日运动打卡（自定义人数 + 周/月视图 + 项目）</title>
+  <title>每日运动打卡 · 精简版</title>
   <style>
-    :root { --bg:#0b1220; --panel:#111a2b; --muted:#7f8ca6; --text:#ecf2ff; --accent:#4da3ff; --ok:#15c27b; --warn:#ff8370; --border:#20304d; }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC",Helvetica,Arial,"Microsoft Yahei",sans-serif;overflow-y:auto}
-    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0b1220,rgba(11,18,32,.85));-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
-    @supports not ((backdrop-filter: blur(6px))) { header{background:#0b1220} }
-    @media (max-width: 768px){ header{position:static;-webkit-backdrop-filter:none;backdrop-filter:none} }
-
+    :root{--bg:#0b1220;--panel:#111a2b;--muted:#7f8ca6;--text:#ecf2ff;--accent:#4da3ff;--ok:#15c27b;--border:#20304d}
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC",Helvetica,Arial,"Microsoft Yahei",sans-serif}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0b1220,rgba(11,18,32,.85));backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
     .wrap{max-width:1200px;margin:0 auto;padding:16px}
     .title{display:flex;align-items:center;gap:12px}
-    .title h1{margin:0;font-size:22px}
+    .title h1{margin:0;font-size:20px}
     .muted{color:var(--muted)}
     .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
     .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     button,select,input,label.btnlike{background:#0f1730;color:var(--text);border:1px solid var(--border);padding:8px 10px;border-radius:10px;cursor:pointer}
-    input[type="text"],input[type="date"],input[type="number"],input[type="password"],input[type="email"]{cursor:text}
-    button:hover,label.btnlike:hover{border-color:#335287}
+    input[type="text"],input[type="date"],input[type="password"]{cursor:text}
     .pill{padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:#0f1730;color:var(--muted);font-size:12px}
-    .pill + .pill{margin-left:6px}
     .table{width:100%;border-collapse:collapse}
-    .table th,.table td{padding:10px;text-align:left;border-bottom:1px dashed var(--border);vertical-align:middle}
-    .table th{color:var(--muted);font-weight:600}
+    .table th,.table td{padding:10px;border-bottom:1px dashed var(--border);vertical-align:middle}
+    .table th{color:var(--muted);text-align:left}
     .name-input{width:100%;background:transparent;border:none;outline:none;color:var(--text);padding:6px 8px;border:1px solid transparent;border-radius:8px}
-    .name-input:hover,.name-input:focus{border-color:#2d4169;background:#0f1730}
-    .name-input[readonly]{opacity:.85}
-    .switch{position:relative;width:48px;height:28px;background:#2b3a5c;border-radius:999px;border:1px solid var(--border);transition:.2s}
+    .name-input:focus{border-color:#2d4169;background:#0f1730}
+    .switch{position:relative;width:48px;height:28px;background:#2b3a5c;border-radius:999px;border:1px solid var(--border)}
     .switch::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;background:#9aa8c4;border-radius:50%;transition:.2s}
     .switch.on{background:#143a2b;border-color:#1d6d4f}
     .switch.on::after{left:24px;background:#27d88f}
     .center{display:flex;align-items:center;justify-content:center;gap:6px}
     .right{text-align:right}
-    .ok{color:var(--ok)}
     .tabs{display:flex;gap:6px}
     .tabbtn{padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:#0f1730;color:var(--text);cursor:pointer}
     .tabbtn.active{outline:2px solid #355a92}
@@ -46,66 +37,52 @@
     .cal-cell{border:1px solid var(--border);border-radius:12px;padding:10px;min-height:76px;background:#0f1730;position:relative}
     .cal-date{font-size:12px;color:var(--muted)}
     .cal-mark{position:absolute;right:10px;top:8px;font-size:14px}
-    .mark-done{color:var(--ok)}
-    .mark-note{color:var(--accent);margin-left:6px}
+    .mark-done{color:var(--ok)}.mark-note{color:var(--accent);margin-left:6px}
     .cal-actions{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
     .tiny{font-size:12px;padding:4px 6px}
     .week-grid{overflow-x:auto}
     .week-table{width:100%;border-collapse:collapse}
     .week-table th,.week-table td{padding:10px;border-bottom:1px dashed var(--border);text-align:center}
     .footer{color:var(--muted);font-size:12px;margin-top:24px}
-    .status{display:inline-flex;gap:6px;align-items:center}
-    .status-dot{width:8px;height:8px;border-radius:50%}
-    .dot-off{background:#6b7280}
-    .dot-on{background:#10b981}
-    @media print{header,.no-print{display:none!important}body{background:#fff;color:#000}.card{border-color:#ccc}.table th,.table td{border-bottom-color:#ddd}}
-    #dbg{position:fixed;bottom:8px;left:8px;background:#1a2236;border:1px solid #2a3b63;border-radius:8px;padding:6px 8px;font-size:12px;color:#9fb4ff;opacity:.9;max-width:calc(100vw - 24px);word-break:break-all}
-
-    /* —— 移动端：主表格两行布局 —— */
-    @media (max-width:768px){
-      #peopleTable thead{display:none}
-      .table td{padding:8px 6px}
-      .stack-label{display:inline-block;color:var(--muted);font-size:12px;margin-right:6px}
-      .row-split{background:transparent}
-      .row-split + .row-split td{border-top:none}
-    }
+    .status{display:inline-flex;gap:6px;align-items:center}.status-dot{width:8px;height:8px;border-radius:50%}.dot-off{background:#6b7280}.dot-on{background:#10b981}
+    @media (max-width:768px){#peopleTable thead{display:none}.table td{padding:8px 6px}.stack-label{display:inline-block;color:var(--muted);font-size:12px;margin-right:6px}.row-split + .row-split td{border-top:none}}
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="title">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M8 2v2M16 2v2M3 9h18M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#9fb4ff" stroke-width="1.3" stroke-linecap="round"/></svg>
-        <h1>每日运动打卡（支持自定义人数 / 周视图 / 月视图）</h1>
-        <span class="muted">支持房间多人实时同步；管理员可增删成员，普通用户可修改自己的姓名</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 2v2M16 2v2M3 9h18M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#9fb4ff" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <h1>每日运动打卡（精简版）</h1>
+        <span class="muted">支持多人实时；管理员可增删成员；普通用户可改自己姓名</span>
       </div>
       <div class="bar">
         <div class="controls card">
-          <button id="prevDay">◀ 上一天</button>
-          <label class="btnlike" for="datePick"><span class="muted">选择日期</span></label>
+          <button id="prevDay">◀</button>
+          <label class="btnlike" for="datePick"><span class="muted">日期</span></label>
           <input id="datePick" type="date" />
-          <button id="nextDay">下一天 ▶</button>
+          <button id="nextDay">▶</button>
           <button id="goToday">今天</button>
           <span id="weekday" class="pill"></span>
           <span id="todaySummary" class="pill"></span>
         </div>
         <div class="controls card no-print" id="cloudPanel">
-          <span class="muted">云同步（Supabase 实时）</span>
-          <label>房间码 <input id="roomIdInput" type="text" placeholder="如 lab-2025" style="width:120px"></label>
-          <label>URL <input id="supaUrl" type="text" placeholder="https://xxxx.supabase.co" style="width:220px"></label>
-          <label>Anon Key <input id="supaKey" type="password" placeholder="复制你的匿名密钥" style="width:220px"></label>
+          <span class="muted">云同步</span>
+          <label>房间 <input id="roomIdInput" type="text" placeholder="lab-2025" style="width:120px"></label>
+          <label>URL <input id="supaUrl" type="text" placeholder="https://xxx.supabase.co" style="width:220px"></label>
+          <label>Anon <input id="supaKey" type="password" placeholder="匿名密钥" style="width:220px"></label>
           <button id="connectCloud">连接</button>
           <span class="status"><span id="cloudDot" class="status-dot dot-off"></span><span id="cloudStatus" class="muted">离线</span></span>
         </div>
         <div class="controls card no-print" id="accountPanel">
           <span class="muted">登录（用户名 + 密码）</span>
-          <label>用户名 <input id="adminUser" type="text" placeholder="例如: zhangsan" style="width:200px"></label>
-          <label>密码 <input id="adminPass" type="password" placeholder="不少于6位" style="width:150px"></label>
-          <button id="adminLogin">登录 / 注册</button>
+          <label>用户名 <input id="adminUser" type="text" placeholder="如 zhangsan" style="width:180px"></label>
+          <label>密码 <input id="adminPass" type="password" placeholder="≥6位" style="width:120px"></label>
+          <button id="adminLogin">登录/注册</button>
           <button id="adminLogout">退出</button>
           <span id="adminInfo" class="pill">未登录</span>
           <label>我的编号 <select id="myOrdSelect" style="width:90px"></select></label>
-          <button id="bindMyOrd">绑定我的行</button>
+          <button id="bindMyOrd">绑定</button>
         </div>
       </div>
     </div>
@@ -116,9 +93,9 @@
       <table class="table" id="peopleTable">
         <thead>
           <tr>
-            <th style="width:60px">#</th>
-            <th>姓名（管理员或本人可改）</th>
-            <th style="width:160px">今天运动？</th>
+            <th style="width:56px">#</th>
+            <th>姓名</th>
+            <th style="width:150px">今天</th>
             <th style="width:220px">今日项目</th>
             <th class="right" style="width:120px">本周累计</th>
             <th class="right" style="width:120px">本月累计</th>
@@ -138,15 +115,15 @@
           <label>成员 <select id="personSelect"></select></label>
         </div>
         <div class="controls" id="weekNav">
-          <button id="prevWeek">◀ 上一周</button>
+          <button id="prevWeek">◀</button>
           <button id="thisWeek">本周</button>
-          <button id="nextWeek">下一周 ▶</button>
+          <button id="nextWeek">▶</button>
           <span id="weekRange" class="pill"></span>
         </div>
         <div class="controls" id="monthNav" style="display:none">
-          <button id="prevMonth">◀ 上一月</button>
+          <button id="prevMonth">◀</button>
           <button id="thisMonth">本月</button>
-          <button id="nextMonth">下一月 ▶</button>
+          <button id="nextMonth">▶</button>
           <span id="monthLabel" class="pill"></span>
         </div>
       </div>
@@ -156,365 +133,225 @@
           <tbody><tr id="weekBodyRow"></tr></tbody>
         </table>
       </div>
-      <div id="monthView" style="display:none">
-        <div class="calendar-grid" id="monthGrid"></div>
-      </div>
+      <div id="monthView" style="display:none"><div class="calendar-grid" id="monthGrid"></div></div>
     </section>
 
-    <p class="footer">默认本地 LocalStorage；填写 Supabase 与房间码可开启**多人实时**。管理员可新增/删除成员并改名；普通用户登录并绑定“我的编号”后，只能修改自己的姓名。</p>
+    <p class="footer">默认本地 LocalStorage；配置 Supabase + 房间码后可多人实时。管理员可增删成员；普通用户登录并绑定“我的编号”后，只能改自己的姓名。</p>
   </main>
 
   <div id="dbg" class="no-print" style="display:none"></div>
 
-  <!-- 自动配置：把你的固定配置放到 config.js，并在这里引入
-       window.SUPA_AUTO = { url:'https://xxxxx.supabase.co', anon:'<anon key>', defaultRoom:'lab-2025', autoconnect:true };
-       访问者将自动连接，可用 ?room=xxx 覆盖房间。  -->
+  <!-- （可选）在独立文件放固定配置：window.SUPA_AUTO = { url:'https://xxxx.supabase.co', anon:'<anon>', defaultRoom:'lab-2025', autoconnect:true } -->
   <script src="./config.js"></script>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-  (function(){
+  (()=>{
     'use strict';
 
-    // ===== 工具 =====
-    var pad2 = function(n){ return String(n).padStart(2,'0'); };
-    var fmt = function(d){ return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate()); };
-    var CN_WEEK = ['周日','周一','周二','周三','周四','周五','周六'];
-    var weekdayStr = function(d){ return CN_WEEK[d.getDay()]; };
-    var cloneDate = function(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
-    var todayDate = function(){ return cloneDate(new Date()); };
-    var isValidDateStr = function(s){ return typeof s==='string' && /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(s); };
-    function parseDate(s){ if(!isValidDateStr(s)) return todayDate(); var a=s.split('-'); var y=Number(a[0]), m=Number(a[1]), da=Number(a[2]); var d=new Date(y,m-1,da); return isNaN(d.getTime())? todayDate() : cloneDate(d); }
-    function setDateInputToToday(input){ var t=todayDate(); try{ if('valueAsDate' in input) input.valueAsDate=t; }catch(e){} input.value=fmt(t); }
-    function getWeekRange(d){ var day=d.getDay(); var diffToMon=(day+6)%7; var start=cloneDate(d); start.setDate(start.getDate()-diffToMon); var end=cloneDate(start); end.setDate(start.getDate()+6); return {start:start,end:end}; }
-    function isMobile(){ return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
-    function getQueryParam(name){ var m = new RegExp('[?&]'+name+'=([^&#]*)').exec(window.location.search); return m? decodeURIComponent(m[1].replace(/\+/g,' ')) : null; }
+    // ===== 简易工具 =====
+    const pad2=n=>String(n).padStart(2,'0');
+    const fmt=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    const CN_WEEK=['周日','周一','周二','周三','周四','周五','周六'];
+    const weekdayStr=d=>CN_WEEK[d.getDay()];
+    const cloneDate=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    const todayDate=()=>cloneDate(new Date());
+    const isValidDateStr=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s);
+    const parseDate=s=>{if(!isValidDateStr(s))return todayDate();const [y,m,da]=s.split('-').map(Number);const d=new Date(y,m-1,da);return isNaN(d)?todayDate():cloneDate(d)};
+    const setDateInputToToday=i=>{const t=todayDate();try{if('valueAsDate'in i)i.valueAsDate=t;}catch{}i.value=fmt(t)};
+    const getWeekRange=d=>{const diff=(d.getDay()+6)%7;const st=cloneDate(d);st.setDate(st.getDate()-diff);const ed=cloneDate(st);ed.setDate(st.getDate()+6);return{start:st,end:ed}};
+    const isMobile=()=>matchMedia&&matchMedia('(max-width:768px)').matches;
+    const qp=n=>{const m=new RegExp('[?&]'+n+'=([^&#]*)').exec(location.search);return m?decodeURIComponent(m[1].replace(/\+/g,' ')):null};
 
-    // 用户名到“内置邮箱”的映射（为了复用 Supabase 的 Email+Password 登录通道）
-    function sanitizeUsername(u){
-      return (u||'').trim().toLowerCase().replace(/[^a-z0-9._-]/g,'_').replace(/_{2,}/g,'_').slice(0,30);
-    }
-    function unameToEmail(u){
-      var s = sanitizeUsername(u);
-      if(!s) s = 'user';
-      return s + '@users.local'; // 伪邮箱，仅用于认证，不发送邮件
-    }
-    function emailToDisplay(e){ return (e||'').split('@')[0]; }
+    // ===== 错误归一化（认证相关） =====
+    const normAuth=msg=>{const s=(msg||'').toLowerCase();
+      if(s.includes('email logins are disabled'))return'email_disabled';
+      if(s.includes('email not confirmed'))return'email_not_confirmed';
+      if(s.includes('invalid login credentials'))return'invalid_credentials';
+      if(s.includes('signups not allowed')||s.includes('signup is disabled'))return'signup_disabled';
+      return'other'};
 
-    // ===== 状态与云配置 =====
-    var STORAGE_KEY='exercise-tracker-v5';
-    var DEFAULT_PEOPLE=function(n){ n=n||20; var arr=[]; for(var i=0;i<n;i++){ arr.push('成员'+(i+1)); } return arr; };
-    var state={ people: DEFAULT_PEOPLE(20), records:{} };
+    // ===== 用户名映射到伪邮箱 =====
+    const sanitize=u=>(u||'').trim().toLowerCase().replace(/[^a-z0-9._-]/g,'_').replace(/_{2,}/g,'_').slice(0,30);
+    const uname2mail=u=>{let s=sanitize(u);if(!s)s='user';return s+'@users.local'};
+    const mail2disp=e=>(e||'').split('@')[0];
 
-    var ROOM = localStorage.getItem('room_id') || '';
-    var SUPA_URL = localStorage.getItem('supa_url') || '';
-    var SUPA_KEY = localStorage.getItem('supa_key') || '';
+    // ===== 状态 =====
+    const STORAGE_KEY='exercise-tracker-v6-lite';
+    const DEFAULT_PEOPLE=n=>Array.from({length:n||20},(_,i)=>'成员'+(i+1));
+    let state={people:DEFAULT_PEOPLE(20),records:{}};
 
-    // 自动配置
-    var AUTO = (window.SUPA_AUTO && typeof window.SUPA_AUTO === 'object') ? window.SUPA_AUTO : null;
-    var roomFromQS = getQueryParam('room') || getQueryParam('r') || getQueryParam('rid');
-    if (roomFromQS) { ROOM = roomFromQS; localStorage.setItem('room_id', ROOM); }
-    if (AUTO && AUTO.url && AUTO.anon) {
-      SUPA_URL = AUTO.url; SUPA_KEY = AUTO.anon;
-      localStorage.setItem('supa_url', SUPA_URL);
-      localStorage.setItem('supa_key', SUPA_KEY);
-      if (!ROOM && AUTO.defaultRoom) { ROOM = AUTO.defaultRoom; localStorage.setItem('room_id', ROOM); }
-    }
+    let ROOM=localStorage.getItem('room_id')||'';
+    let SUPA_URL=localStorage.getItem('supa_url')||'';
+    let SUPA_KEY=localStorage.getItem('supa_key')||'';
 
-    var sb = null, connected=false;
+    const AUTO=(window.SUPA_AUTO&&typeof window.SUPA_AUTO==='object')?window.SUPA_AUTO:null;
+    const rQS=qp('room')||qp('r')||qp('rid');
+    if(rQS){ROOM=rQS;localStorage.setItem('room_id',ROOM)}
+    if(AUTO&&AUTO.url&&AUTO.anon){SUPA_URL=AUTO.url;SUPA_KEY=AUTO.anon;localStorage.setItem('supa_url',SUPA_URL);localStorage.setItem('supa_key',SUPA_KEY);if(!ROOM&&AUTO.defaultRoom){ROOM=AUTO.defaultRoom;localStorage.setItem('room_id',ROOM)}}
 
-    // 登录/权限
-    var sessionUser = null; // { id, email, user_metadata }
-    var isAdmin = false;
-    var myOrd = null; // 我绑定的行（1-based）
+    let sb=null, connected=false;
+    let sessionUser=null; let isAdmin=false; let myOrd=null;
 
     // ===== 本地存取 =====
-    function loadLocal(){ try{ var raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem('exercise-tracker-v4'); if(raw){ var obj=JSON.parse(raw); if(Array.isArray(obj.people)&&obj.people.length>0) state.people=obj.people; if(obj.records&&typeof obj.records==='object') state.records=obj.records; } }catch(e){ log('加载失败:'+e.message);} }
-    function saveLocal(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-
-    // ===== Supabase 连接 =====
-    async function connectSupabase(){
-      if(!SUPA_URL || !SUPA_KEY){ setCloudStatus(false,'离线（未配置）'); return false; }
-      try{
-        sb = supabase.createClient(SUPA_URL, SUPA_KEY);
-        var probe = await sb.from('people').select('room_id',{ head:true, count:'exact' }).limit(1);
-        if(probe.error){ setCloudStatus(false,'连接失败：'+probe.error.message); return false; }
-        setCloudStatus(true, ROOM? ('在线 · 房间：'+ROOM) : '在线（未加入房间）');
-        connected = true;
-        var sessRes = await sb.auth.getSession();
-        sessionUser = (sessRes && sessRes.data && sessRes.data.session && sessRes.data.session.user) ? sessRes.data.session.user : null;
-        await resolveAdminByRoom();
-        await loadMyOrd();
-        updateAccountUI();
-        return true;
-      }catch(err){ setCloudStatus(false,'异常：'+err.message); return false; }
-    }
-
-    function setCloudStatus(on,msg){ var dot=document.getElementById('cloudDot'); var st=document.getElementById('cloudStatus'); dot.classList.toggle('dot-on',!!on); dot.classList.toggle('dot-off',!on); st.textContent=msg; }
+    const loadLocal=()=>{try{const raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem('exercise-tracker-v5');if(raw){const o=JSON.parse(raw);if(Array.isArray(o.people)&&o.people.length)state.people=o.people;if(o.records&&typeof o.records==='object')state.records=o.records}}catch(e){log('加载失败:'+e.message)}};
+    const saveLocal=()=>localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 
     // ===== DOM =====
-    var datePick=document.getElementById('datePick');
-    var weekdayEl=document.getElementById('weekday');
-    var peopleBody=document.getElementById('peopleBody');
-    var todaySummary=document.getElementById('todaySummary');
-    var personSelect=document.getElementById('personSelect');
-    var weekHeadRow=document.getElementById('weekHeadRow');
-    var weekBodyRow=document.getElementById('weekBodyRow');
-    var weekRangeEl=document.getElementById('weekRange');
-    var monthGrid=document.getElementById('monthGrid');
-    var monthLabel=document.getElementById('monthLabel');
-    var tabWeek=document.getElementById('tabWeek');
-    var tabMonth=document.getElementById('tabMonth');
-    var weekView=document.getElementById('weekView');
-    var monthView=document.getElementById('monthView');
-    var weekNav=document.getElementById('weekNav');
-    var monthNav=document.getElementById('monthNav');
-    var roomIdInput=document.getElementById('roomIdInput');
-    var supaUrlInput=document.getElementById('supaUrl');
-    var supaKeyInput=document.getElementById('supaKey');
-    var connectBtn=document.getElementById('connectCloud');
-    var adminUserInput=document.getElementById('adminUser');
-    var adminPassInput=document.getElementById('adminPass');
-    var adminLoginBtn=document.getElementById('adminLogin');
-    var adminLogoutBtn=document.getElementById('adminLogout');
-    var adminInfo=document.getElementById('adminInfo');
-    var myOrdSelect=document.getElementById('myOrdSelect');
-    var bindMyOrdBtn=document.getElementById('bindMyOrd');
-    var cloudPanel=document.getElementById('cloudPanel');
+    const $=id=>document.getElementById(id);
+    const datePick=$('datePick'), weekdayEl=$('weekday'), peopleBody=$('peopleBody'), todaySummary=$('todaySummary');
+    const personSelect=$('personSelect'), weekHeadRow=$('weekHeadRow'), weekBodyRow=$('weekBodyRow'), weekRangeEl=$('weekRange');
+    const monthGrid=$('monthGrid'), monthLabel=$('monthLabel');
+    const tabWeek=$('tabWeek'), tabMonth=$('tabMonth'), weekView=$('weekView'), monthView=$('monthView'), weekNav=$('weekNav'), monthNav=$('monthNav');
+    const roomIdInput=$('roomIdInput'), supaUrlInput=$('supaUrl'), supaKeyInput=$('supaKey'), connectBtn=$('connectCloud');
+    const adminUserInput=$('adminUser'), adminPassInput=$('adminPass'), adminLoginBtn=$('adminLogin'), adminLogoutBtn=$('adminLogout');
+    const adminInfo=$('adminInfo'), myOrdSelect=$('myOrdSelect'), bindMyOrdBtn=$('bindMyOrd');
+    const dbg=$('dbg'), cloudDot=$('cloudDot'), cloudStatus=$('cloudStatus');
 
-    // ===== 调试显示 =====
-    var dbg=document.getElementById('dbg');
-    function log(msg){ dbg.style.display='block'; dbg.textContent=String(msg); try{ console.warn('[debug]', msg); }catch(e){} }
-    window.addEventListener('error', function(e){ log('脚本错误：'+(e.message||e)); });
+    const log=msg=>{if(qp('debug')==='1'){dbg.style.display='block';dbg.textContent=String(msg)};try{console.warn('[debug]',msg)}catch{}}
+    window.addEventListener('error',e=>log('脚本错误：'+(e.message||e)));
 
-    // ===== 数据结构 =====
-    function isObjEntry(e){ return !!e && typeof e==='object' && ('done' in e || 'item' in e); }
-    function getDone(e){ return isObjEntry(e)? !!e.done : !!e; }
-    function getItem(e){ return isObjEntry(e)? (e.item||'') : ''; }
-    function ensureDay(dateStr){ var n=state.people.length; if(!n) return; if(!state.records[dateStr] || !Array.isArray(state.records[dateStr]) || state.records[dateStr].length!==n){ var arr=new Array(n); for(var i=0;i<n;i++){ arr[i]={done:false,item:''}; } var old=state.records[dateStr]; if(Array.isArray(old)){ for(var j=0;j<Math.min(old.length,n);j++){ var e=old[j]; arr[j]=isObjEntry(e)? {done:!!e.done,item:(e.item||'')} : {done:!!e,item:''}; } } state.records[dateStr]=arr; } else { state.records[dateStr]=state.records[dateStr].map(function(e){ return isObjEntry(e)? e : {done:!!e,item:''}; }); } }
-    function setDone(dateStr,i,val){ ensureDay(dateStr); state.records[dateStr][i].done=!!val; saveLocal(); if(connected && ROOM) upsertRecordCloud(dateStr,i,state.records[dateStr][i]); }
-    function setItem(dateStr,i,text){ ensureDay(dateStr); state.records[dateStr][i].item=String(text||''); saveLocal(); if(connected && ROOM) upsertRecordCloud(dateStr,i,state.records[dateStr][i]); }
-    function personRangeCount(i,startDate,endDate){ var cnt=0; var d=cloneDate(startDate); while(d<=endDate){ var k=fmt(d); var arr=state.records[k]; if(arr && arr[i] && getDone(arr[i])) cnt++; d.setDate(d.getDate()+1);} return cnt; }
+    // ===== 记录结构 =====
+    const isEntry=e=>!!e&&typeof e==='object'&&('done'in e||'item'in e);
+    const getDone=e=>isEntry(e)?!!e.done:!!e;
+    const getItem=e=>isEntry(e)?(e.item||''):'';
+    const ensureDay=ds=>{const n=state.people.length;if(!n)return;const cur=state.records[ds];if(!cur||!Array.isArray(cur)||cur.length!==n){const arr=Array.from({length:n},()=>({done:false,item:''}));if(Array.isArray(cur))for(let j=0;j<Math.min(cur.length,n);j++){const e=cur[j];arr[j]=isEntry(e)?{done:!!e.done,item:(e.item||'')}:{done:!!e,item:''}}state.records[ds]=arr}else{state.records[ds]=cur.map(e=>isEntry(e)?e:{done:!!e,item:''})}};
+    const setDone=(ds,i,v)=>{ensureDay(ds);state.records[ds][i].done=!!v;saveLocal();if(connected&&ROOM)Cloud.upsertRecord(ds,i,state.records[ds][i])};
+    const setItem=(ds,i,t)=>{ensureDay(ds);state.records[ds][i].item=String(t||'');saveLocal();if(connected&&ROOM)Cloud.upsertRecord(ds,i,state.records[ds][i])};
+    const rangeCount=(i,st,ed)=>{let c=0,d=cloneDate(st);while(d<=ed){const k=fmt(d),a=state.records[k];if(a&&a[i]&&getDone(a[i]))c++;d.setDate(d.getDate()+1)}return c};
 
-    // ===== 权限辅助 =====
-    function canEditNameRow(i){ return isAdmin || (sessionUser && myOrd === i+1); }
+    // ===== 权限 =====
+    const canEditName=i=>isAdmin||(sessionUser&&myOrd===i+1);
 
-    // ===== 渲染：日表格（桌面：一行；移动：两行） =====
-    function renderTable(){
-      if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick);
-      var dateStr=datePick.value; ensureDay(dateStr); var arr=state.records[dateStr];
-      peopleBody.innerHTML=''; var doneCount=0; var d=parseDate(dateStr);
-      weekdayEl.textContent = weekdayStr(d)+'（'+fmt(d)+'）';
-      var wr=getWeekRange(d); var weekStart=wr.start, weekEnd=wr.end;
-      var monthStart=new Date(d.getFullYear(),d.getMonth(),1); var monthEnd=new Date(d.getFullYear(),d.getMonth()+1,0);
-      var mobile = isMobile();
+    // ===== 渲染 =====
+    const renderSummary=()=>{const ds=isValidDateStr(datePick.value)?datePick.value:fmt(todayDate());const arr=state.records[ds]||[];const done=arr.filter(e=>getDone(e)).length;todaySummary.innerHTML=`本日完成：<b style="color:${getComputedStyle(document.documentElement).getPropertyValue('--ok')}">${done}</b> / ${state.people.length}`};
 
-      for(var i=0;i<state.people.length;i++){
-        var e=arr[i]; var done=getDone(e); if(done) doneCount++; var item=getItem(e);
-        var wCnt = personRangeCount(i,weekStart,weekEnd);
-        var mCnt = personRangeCount(i,monthStart,monthEnd);
+    const buildSwitch=(checked,on)=>{const sw=document.createElement('div');sw.className='switch'+(checked?' on':'');sw.setAttribute('role','switch');sw.addEventListener('click',()=>{const nv=!checked;on(nv);checked=nv;sw.classList.toggle('on',nv);renderSummary()});return sw};
 
+    const renderTable=()=>{
+      if(!isValidDateStr(datePick.value))setDateInputToToday(datePick);
+      const ds=datePick.value;ensureDay(ds);const arr=state.records[ds];
+      peopleBody.innerHTML='';let doneCount=0;const d=parseDate(ds);
+      weekdayEl.textContent=`${weekdayStr(d)}（${fmt(d)}）`;
+      const {start:ws,end:we}=getWeekRange(d);const ms=new Date(d.getFullYear(),d.getMonth(),1), me=new Date(d.getFullYear(),d.getMonth()+1,0);
+      const mobile=isMobile();
+      for(let i=0;i<state.people.length;i++){
+        const e=arr[i], done=getDone(e), item=getItem(e); if(done)doneCount++;
+        const wCnt=rangeCount(i,ws,we), mCnt=rangeCount(i,ms,me);
         if(!mobile){
-          // —— 桌面：一行 ——
-          var tr=document.createElement('tr');
-          var tdIdx=document.createElement('td'); tdIdx.textContent=(i+1); tr.appendChild(tdIdx);
-          var tdName=document.createElement('td'); var nameInput=document.createElement('input'); nameInput.className='name-input'; nameInput.type='text'; nameInput.value=state.people[i]; nameInput.placeholder='成员'+(i+1); nameInput.readOnly=!canEditNameRow(i); nameInput.addEventListener('change',function(i,nameInput){ return async function(){ var newName=(nameInput.value.trim()||('成员'+(i+1))); if(!canEditNameRow(i)){ nameInput.value=state.people[i]; return; } state.people[i]=newName; saveLocal(); renderPersonSelect(); if(connected && ROOM){ if(isAdmin){ await syncPeopleCloud(); } else { await updatePersonNameCloud(i+1,newName); } } }; }(i,nameInput)); tdName.appendChild(nameInput); tr.appendChild(tdName);
-          var tdCheck=document.createElement('td'); tdCheck.className='center'; var sw=document.createElement('div'); sw.setAttribute('role','switch'); sw.className='switch'+(done?' on':''); sw.addEventListener('click',function(i,sw){ return function(){ var nv=!getDone(state.records[dateStr][i]); setDone(dateStr,i,nv); sw.classList.toggle('on',nv); renderSummary(); }; }(i,sw)); tdCheck.appendChild(sw); tr.appendChild(tdCheck);
-          var tdItem=document.createElement('td'); var itemInput=document.createElement('input'); itemInput.className='name-input'; itemInput.type='text'; itemInput.placeholder='如：跑步20分钟 / 骑行5km'; itemInput.value=item; itemInput.addEventListener('change',function(i,itemInput){ return function(){ setItem(dateStr,i,itemInput.value); }; }(i,itemInput)); tdItem.appendChild(itemInput); tr.appendChild(tdItem);
-          var tdWeek=document.createElement('td'); tdWeek.className='right'; tdWeek.innerHTML='<span class="pill">周 '+wCnt+' 次</span>'; tr.appendChild(tdWeek);
-          var tdMonth=document.createElement('td'); tdMonth.className='right'; tdMonth.innerHTML='<span class="pill">月 '+mCnt+' 次</span>'; tr.appendChild(tdMonth);
+          const tr=document.createElement('tr');
+          tr.innerHTML=`<td>${i+1}</td><td></td><td class="center"></td><td></td><td class="right"></td><td class="right"></td>`;
+          const nameInp=document.createElement('input');nameInp.className='name-input';nameInp.value=state.people[i];nameInp.placeholder='成员'+(i+1);nameInp.readOnly=!canEditName(i);nameInp.addEventListener('change',async()=>{const nv=(nameInp.value.trim()||('成员'+(i+1)));if(!canEditName(i)){nameInp.value=state.people[i];return}state.people[i]=nv;saveLocal();renderPersonSelect();if(connected&&ROOM){if(isAdmin){await Cloud.syncPeople()}else{await Cloud.updatePerson(i+1,nv)}}});tr.children[1].appendChild(nameInp);
+          tr.children[2].appendChild(buildSwitch(done,nv=>setDone(ds,i,nv)));
+          const itemInp=document.createElement('input');itemInp.className='name-input';itemInp.placeholder='如 跑步20分钟';itemInp.value=item;itemInp.addEventListener('change',()=>setItem(ds,i,itemInp.value));tr.children[3].appendChild(itemInp);
+          tr.children[4].innerHTML=`<span class="pill">周 ${wCnt} 次</span>`;
+          tr.children[5].innerHTML=`<span class="pill">月 ${mCnt} 次</span>`;
           peopleBody.appendChild(tr);
-        } else {
-          // —— 移动：两行 ——
-          var r1=document.createElement('tr'); r1.className='row-split';
-          var c1=document.createElement('td'); c1.textContent=(i+1); r1.appendChild(c1);
-          var c2=document.createElement('td'); c2.colSpan=3; var nameInput2=document.createElement('input'); nameInput2.className='name-input'; nameInput2.type='text'; nameInput2.value=state.people[i]; nameInput2.placeholder='成员'+(i+1); nameInput2.readOnly=!canEditNameRow(i); nameInput2.addEventListener('change',function(i,inp){ return async function(){ var newName=(inp.value.trim()||('成员'+(i+1))); if(!canEditNameRow(i)){ inp.value=state.people[i]; return; } state.people[i]=newName; saveLocal(); renderPersonSelect(); if(connected && ROOM){ if(isAdmin){ await syncPeopleCloud(); } else { await updatePersonNameCloud(i+1,newName); } } }; }(i,nameInput2)); c2.appendChild(nameInput2); r1.appendChild(c2);
-          var c3=document.createElement('td'); c3.colSpan=2; var sw2=document.createElement('div'); sw2.setAttribute('role','switch'); sw2.className='switch'+(done?' on':''); sw2.addEventListener('click',function(i,sw){ return function(){ var nv=!getDone(state.records[dateStr][i]); setDone(dateStr,i,nv); sw.classList.toggle('on',nv); renderSummary(); }; }(i,sw2)); c3.appendChild(sw2); r1.appendChild(c3);
-          peopleBody.appendChild(r1);
-
-          var r2=document.createElement('tr'); r2.className='row-split';
-          var c4=document.createElement('td'); c4.textContent=''; r2.appendChild(c4);
-          var c5=document.createElement('td'); c5.colSpan=3; var lbl1=document.createElement('span'); lbl1.className='stack-label'; lbl1.textContent='今日项目'; var itemInput2=document.createElement('input'); itemInput2.className='name-input'; itemInput2.type='text'; itemInput2.placeholder='如：跑步20分钟 / 骑行5km'; itemInput2.value=item; itemInput2.addEventListener('change',function(i,inp){ return function(){ setItem(dateStr,i,inp.value); }; }(i,itemInput2)); c5.appendChild(lbl1); c5.appendChild(itemInput2); r2.appendChild(c5);
-          var c6=document.createElement('td'); c6.colSpan=2; var lbl2=document.createElement('span'); lbl2.className='stack-label'; lbl2.textContent='累计'; var pillW=document.createElement('span'); pillW.className='pill'; pillW.textContent='周 '+wCnt+' 次'; var pillM=document.createElement('span'); pillM.className='pill'; pillM.textContent='月 '+mCnt+' 次'; c6.appendChild(lbl2); c6.appendChild(pillW); c6.appendChild(pillM); r2.appendChild(c6);
+        }else{
+          const r1=document.createElement('tr');r1.className='row-split';r1.innerHTML=`<td>${i+1}</td><td colspan="3"></td><td colspan="2" class="center"></td>`;
+          const name2=document.createElement('input');name2.className='name-input';name2.value=state.people[i];name2.placeholder='成员'+(i+1);name2.readOnly=!canEditName(i);name2.addEventListener('change',async()=>{const nv=(name2.value.trim()||('成员'+(i+1)));if(!canEditName(i)){name2.value=state.people[i];return}state.people[i]=nv;saveLocal();renderPersonSelect();if(connected&&ROOM){if(isAdmin){await Cloud.syncPeople()}else{await Cloud.updatePerson(i+1,nv)}}});r1.children[1].appendChild(name2);r1.children[2].appendChild(buildSwitch(done,nv=>setDone(ds,i,nv)));peopleBody.appendChild(r1);
+          const r2=document.createElement('tr');r2.className='row-split';r2.innerHTML=`<td></td><td colspan="3"></td><td colspan="2"></td>`;
+          const tag=document.createElement('span');tag.className='stack-label';tag.textContent='今日项目';const inp=document.createElement('input');inp.className='name-input';inp.placeholder='如 跑步20分钟';inp.value=item;inp.addEventListener('change',()=>setItem(ds,i,inp.value));r2.children[1].appendChild(tag);r2.children[1].appendChild(inp);
+          const lbl=document.createElement('span');lbl.className='stack-label';lbl.textContent='累计';const pW=document.createElement('span');pW.className='pill';pW.textContent=`周 ${wCnt} 次`;const pM=document.createElement('span');pM.className='pill';pM.textContent=`月 ${mCnt} 次`;r2.children[2].appendChild(lbl);r2.children[2].appendChild(pW);r2.children[2].appendChild(pM);
           peopleBody.appendChild(r2);
         }
       }
-      todaySummary.innerHTML='本日完成：<b class="ok">'+doneCount+'</b> / '+state.people.length;
-      updateUIEnables();
-    }
+      todaySummary.innerHTML=`本日完成：<b style="color:${getComputedStyle(document.documentElement).getPropertyValue('--ok')}">${doneCount}</b> / ${state.people.length}`;
+      updateAccountUI();
+    };
 
-    function renderSummary(){ var dateStr=isValidDateStr(datePick.value)? datePick.value : fmt(todayDate()); var arr=state.records[dateStr]||[]; var done=arr.filter(function(e){return getDone(e);}).length; todaySummary.innerHTML='本日完成：<b class="ok">'+done+'</b> / '+state.people.length; }
+    let weekRef=todayDate();
+    const renderWeek=()=>{const {start:s,end:e}=getWeekRange(weekRef);weekRangeEl.textContent=`${fmt(s)} 至 ${fmt(e)}`;let hd='<th>成员</th>';
+      for(let i=0;i<7;i++){const d=new Date(s);d.setDate(s.getDate()+i);hd+=`<th>${CN_WEEK[d.getDay()]}<br>${pad2(d.getMonth()+1)}-${pad2(d.getDate())}</th>`}weekHeadRow.innerHTML=hd;
+      const idx=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1));const name=state.people[idx]||('成员'+(idx+1));
+      let row=`<td><span class="pill">${name}</span></td>`;for(let j=0;j<7;j++){const dj=new Date(s);dj.setDate(s.getDate()+j);const k=fmt(dj);ensureDay(k);const entry=state.records[k][idx];const done=getDone(entry),note=getItem(entry);const noteHtml=note?`<span class="pill">${note.length>14?note.slice(0,14)+'…':note}</span>`:'';row+=`<td data-day="${k}" data-i="${idx}"><div class="center"><div class="switch ${done?'on':''}"></div></div><div style="margin-top:6px;">${noteHtml}</div></td>`}weekBodyRow.innerHTML=row;
+      [...weekBodyRow.querySelectorAll('td[data-day] .switch')].forEach(sw=>sw.addEventListener('click',e=>{const cell=e.currentTarget.closest('td[data-day]');const k=cell.getAttribute('data-day');const i=+cell.getAttribute('data-i');const cur=state.records[k][i];const nv=!getDone(cur);setDone(k,i,nv);e.currentTarget.classList.toggle('on',nv);renderSummary()}));
+      [...weekBodyRow.querySelectorAll('td[data-day]')].forEach(cell=>cell.addEventListener('dblclick',()=>{const k=cell.getAttribute('data-day');const i=+cell.getAttribute('data-i');const cur=getItem(state.records[k][i]);const txt=prompt(k+' 项目：',cur);if(txt!==null){setItem(k,i,txt);renderWeek()}}));
+    };
 
-    // ===== 周、月视图 =====
-    var weekRef=todayDate();
-    function renderWeek(){ var wr=getWeekRange(weekRef); var start=wr.start, end=wr.end; weekRangeEl.textContent=fmt(start)+' 至 '+fmt(end); var headHtml='<th>成员</th>'; for(var i=0;i<7;i++){ var d=new Date(start); d.setDate(start.getDate()+i); headHtml += '<th>'+CN_WEEK[d.getDay()]+'<br>'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+'</th>'; } weekHeadRow.innerHTML=headHtml; var idx=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1)); var name=state.people[idx]||('成员'+(idx+1)); var rowHtml='<td><span class="pill">'+name+'</span></td>'; for(var j=0;j<7;j++){ var dj=new Date(start); dj.setDate(start.getDate()+j); var k=fmt(dj); ensureDay(k); var entry=state.records[k][idx]; var done=getDone(entry); var note=getItem(entry); var noteHtml = note? ('<span class="pill">'+(note.length>14? note.slice(0,14)+'…' : note)+'</span>') : ''; rowHtml += '<td data-day="'+k+'" data-i="'+idx+'"><div class="center"><div class="switch '+(done?'on':'')+'"></div></div><div style="margin-top:6px;">'+noteHtml+'</div></td>'; } weekBodyRow.innerHTML=rowHtml; Array.prototype.forEach.call(weekBodyRow.querySelectorAll('td[data-day] .switch'), function(sw){ sw.addEventListener('click',function(e){ var cell=e.target.closest('td[data-day]'); var k=cell.getAttribute('data-day'); var i=Number(cell.getAttribute('data-i')); var cur=state.records[k][i]; var nv=!getDone(cur); setDone(k,i,nv); sw.classList.toggle('on',nv); renderSummary(); }); }); Array.prototype.forEach.call(weekBodyRow.querySelectorAll('td[data-day]'), function(cell){ cell.addEventListener('dblclick',function(){ var k=cell.getAttribute('data-day'); var i=Number(cell.getAttribute('data-i')); var curItem=getItem(state.records[k][i]); var txt=prompt('填写/修改该日项目：',curItem); if(txt!==null){ setItem(k,i,txt); renderWeek(); } }); }); }
+    let monthRef=todayDate();
+    const renderMonth=()=>{const y=monthRef.getFullYear(),m=monthRef.getMonth();monthLabel.textContent=`${y}年${pad2(m+1)}月`;monthGrid.innerHTML='';const first=new Date(y,m,1),last=new Date(y,m+1,0);const prefix=(first.getDay()+6)%7;const total=prefix+last.getDate();const cells=Math.ceil(total/7)*7;const idx=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1));
+      for(let i=0;i<cells;i++){const cell=document.createElement('div');cell.className='cal-cell';const day=i-prefix+1;if(day>=1&&day<=last.getDate()){const d=new Date(y,m,day);const k=fmt(d);ensureDay(k);const entry=state.records[k][idx];const done=getDone(entry),note=getItem(entry);
+          const top=document.createElement('div');top.className='cal-date';top.textContent=`${CN_WEEK[d.getDay()]} ${pad2(m+1)}-${pad2(day)}`;cell.appendChild(top);
+          const mark=document.createElement('div');mark.className='cal-mark';mark.innerHTML=(done?'<span class="mark-done">✔</span>':'')+(note?'<span class="mark-note">✎</span>':'');cell.appendChild(mark);
+          const acts=document.createElement('div');acts.className='cal-actions';
+          const bt1=document.createElement('button');bt1.className='tiny';bt1.textContent=done?'取消运动':'标记运动';bt1.addEventListener('click',()=>{setDone(k,idx,!done);renderMonth();renderSummary()});
+          const bt2=document.createElement('button');bt2.className='tiny';bt2.textContent=note?'编辑项目':'填写项目';bt2.addEventListener('click',()=>{const txt=prompt(k+' 项目：',note);if(txt!==null){setItem(k,idx,txt);renderMonth()}});
+          acts.appendChild(bt1);acts.appendChild(bt2);cell.appendChild(acts);
+        }else{cell.style.visibility='hidden'}monthGrid.appendChild(cell)}
+    };
 
-    var monthRef=todayDate();
-    function renderMonth(){ var y=monthRef.getFullYear(); var m=monthRef.getMonth(); monthLabel.textContent=y+'年'+pad2(m+1)+'月'; monthGrid.innerHTML=''; var first=new Date(y,m,1); var last=new Date(y,m+1,0); var prefix=(first.getDay()+6)%7; var total=prefix+last.getDate(); var cells=Math.ceil(total/7)*7; var idx=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1)); for(var i=0;i<cells;i++){ var cell=document.createElement('div'); cell.className='cal-cell'; var dayNum=i-prefix+1; if(dayNum>=1 && dayNum<=last.getDate()){ var d=new Date(y,m,dayNum); var k=fmt(d); ensureDay(k); var entry=state.records[k][idx]; var done=getDone(entry); var note=getItem(entry); var top=document.createElement('div'); top.className='cal-date'; top.textContent=CN_WEEK[d.getDay()]+' '+pad2(m+1)+'-'+pad2(dayNum); cell.appendChild(top); var mark=document.createElement('div'); mark.className='cal-mark'; mark.innerHTML=(done?'<span class="mark-done">✔</span>':'')+(note?'<span class="mark-note">✎</span>':''); cell.appendChild(mark); var actions=document.createElement('div'); actions.className='cal-actions'; var btnToggle=document.createElement('button'); btnToggle.className='tiny'; btnToggle.textContent=done?'取消运动':'标记运动'; btnToggle.addEventListener('click',function(k,idx,done){ return function(){ setDone(k,idx,!done); renderMonth(); renderSummary(); }; }(k,idx,done)); var btnEdit=document.createElement('button'); btnEdit.className='tiny'; btnEdit.textContent=note?'编辑项目':'填写项目'; btnEdit.addEventListener('click',function(k,idx,note){ return function(){ var txt=prompt(k+' 项目：',note); if(txt!==null){ setItem(k,idx,txt); renderMonth(); } }; }(k,idx,note)); actions.appendChild(btnToggle); actions.appendChild(btnEdit); cell.appendChild(actions); } else { cell.style.visibility='hidden'; } monthGrid.appendChild(cell); } }
+    const renderPersonSelect=()=>{const sel=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1));personSelect.innerHTML=state.people.map((n,i)=>`<option value="${i}">${n}</option>`).join('');personSelect.selectedIndex=Math.min(sel,state.people.length-1);refreshMyOrdSelect()};
+    const renderAll=()=>{if(!isValidDateStr(datePick.value))setDateInputToToday(datePick);renderPersonSelect();renderTable();renderWeek();renderMonth();updateAccountUI()};
 
-    // ===== 渲染总控 =====
-    function renderPersonSelect(){ var sel=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1)); var html=''; for(var i=0;i<state.people.length;i++){ html += '<option value="'+i+'">'+state.people[i]+'</option>'; } personSelect.innerHTML=html; personSelect.selectedIndex=Math.min(sel,state.people.length-1); refreshMyOrdSelect(); }
-    function renderAll(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); renderPersonSelect(); renderTable(); renderWeek(); renderMonth(); updateAccountUI(); }
+    const currentName=()=>{if(!sessionUser)return'';const meta=sessionUser.user_metadata||{};return meta.username||mail2disp(sessionUser.email||'')};
+    const updateUIEnables=()=>{adminInfo.textContent=sessionUser?(isAdmin?('管理员：'+currentName()):('已登录：'+currentName())):'未登录';bindMyOrdBtn.disabled=!(sessionUser&&ROOM&&connected);myOrdSelect.disabled=!(sessionUser&&ROOM&&connected)};
+    const refreshMyOrdSelect=()=>{myOrdSelect.innerHTML=state.people.map((n,i)=>`<option value="${i+1}">${i+1} — ${n}</option>`).join('');if(myOrd)myOrdSelect.value=String(myOrd)};
 
-    function currentDisplayName(){
-      if(!sessionUser) return '';
-      var meta = sessionUser.user_metadata || {};
-      return meta.username || emailToDisplay(sessionUser.email||'');
-    }
-    function updateUIEnables(){ adminInfo.textContent = sessionUser? (isAdmin? ('管理员：'+currentDisplayName()) : ('已登录：'+currentDisplayName())) : '未登录'; bindMyOrdBtn.disabled = !(sessionUser && ROOM && connected); myOrdSelect.disabled = !(sessionUser && ROOM && connected); }
-
-    function refreshMyOrdSelect(){ var n=state.people.length; var opts=''; for(var i=0;i<n;i++){ opts += '<option value="'+(i+1)+'">'+(i+1)+' — '+state.people[i]+'</option>'; } myOrdSelect.innerHTML = opts; if(myOrd){ myOrdSelect.value = String(myOrd); } }
+    // ===== 云端（封装） =====
+    const setCloudStatus=(on,msg)=>{cloudDot.classList.toggle('dot-on',!!on);cloudDot.classList.toggle('dot-off',!on);cloudStatus.textContent=msg};
+    const Cloud={
+      async connect(){if(!SUPA_URL||!SUPA_KEY){setCloudStatus(false,'离线（未配置）');return false}try{sb=supabase.createClient(SUPA_URL,SUPA_KEY);const probe=await sb.from('people').select('room_id',{head:true,count:'exact'}).limit(1);if(probe.error){setCloudStatus(false,'连接失败：'+probe.error.message);return false}setCloudStatus(true,ROOM?('在线 · 房间：'+ROOM):'在线（未入房间）');connected=true;const s=await sb.auth.getSession();sessionUser=s?.data?.session?.user||null;await this.resolveAdmin();await this.loadMyOrd();updateAccountUI();return true}catch(e){setCloudStatus(false,'异常：'+e.message);return false}},
+      async resolveAdmin(){if(!connected||!ROOM){isAdmin=false;return}try{const q=await sb.from('rooms').select('admin_uid').eq('room_id',ROOM).maybeSingle();if(q.error&&q.error.code!=='PGRST116'){log('房间查询失败:'+q.error.message);isAdmin=false;return}if(!q.data){if(sessionUser){await sb.from('rooms').insert({room_id:ROOM,admin_uid:sessionUser.id});isAdmin=true}else isAdmin=false}else isAdmin=!!sessionUser&&q.data.admin_uid===sessionUser.id}catch(e){log('resolveAdmin异常:'+e.message);isAdmin=false}},
+      async loadMyOrd(){if(!connected||!ROOM||!sessionUser){myOrd=null;return}const q=await sb.from('members').select('ord').eq('room_id',ROOM).eq('uid',sessionUser.id).maybeSingle();if(q.error&&q.error.code!=='PGRST116')log('查我的编号失败:'+q.error.message);myOrd=q.data?.ord||null},
+      async hydrate(){try{const ppl=await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');const rows=ppl.data;if(rows?.length){const max=Math.max(...rows.map(p=>p.ord));state.people=Array.from({length:max},(_,i)=>rows.find(p=>p.ord===i+1)?.name||('成员'+(i+1)))}else{await this.syncPeople()}const d=parseDate(datePick.value);await this.loadMonth(d.getFullYear(),d.getMonth()+1);renderAll()}catch(e){log('hydrate异常:'+e.message)}},
+      async syncPeople(){const rows=state.people.map((n,i)=>({room_id:ROOM,ord:i+1,name:n}));const r=await sb.from('people').upsert(rows,{onConflict:'room_id,ord'});if(r.error)log('上传成员失败:'+r.error.message)},
+      async updatePerson(ord,name){const r=await sb.from('people').upsert({room_id:ROOM,ord,name},{onConflict:'room_id,ord'});if(r.error)log('更名失败:'+r.error.message)},
+      async loadMonth(y,m){const ym=String(m).padStart(2,'0');const from=`${y}-${ym}-01`,to=`${y}-${ym}-31`;const q=await sb.from('records').select('date,ord,done,item').eq('room_id',ROOM).gte('date',from).lte('date',to);if(q.error){log('拉取记录失败:'+q.error.message);return}const d0=new Date(y,m-1,1),last=new Date(y,m,0),by={};q.data.forEach(r=>{const k=''+r.date;const a=by[k]||[];a[r.ord-1]={done:!!r.done,item:r.item||''};by[k]=a});const cur=new Date(d0);while(cur<=last){const k=fmt(cur),n=state.people.length,arr=Array.from({length:n},()=>({done:false,item:''})),has=by[k]||[];for(let j=0;j<n;j++)if(has[j])arr[j]=has[j];state.records[k]=arr;cur.setDate(cur.getDate()+1)}saveLocal()},
+      async upsertRecord(ds,idx,entry){const r=await sb.from('records').upsert({room_id:ROOM,date:ds,ord:idx+1,done:!!entry.done,item:entry.item||''},{onConflict:'room_id,date,ord'});if(r.error)log('写记录失败:'+r.error.message)},
+      realtime(){sb.channel('realtime:records').on('postgres_changes',{event:'*',schema:'public',table:'records',filter:'room_id=eq.'+ROOM},payload=>{const r=payload.new||payload.old;if(!r)return;const k=r.date;ensureDay(k);const idx=r.ord-1;if(payload.eventType==='DELETE')state.records[k][idx]={done:false,item:''};else state.records[k][idx]={done:!!r.done,item:r.item||''};saveLocal();renderSummary();if(k===datePick.value)renderTable();renderWeek();renderMonth()}).subscribe();
+               sb.channel('realtime:people').on('postgres_changes',{event:'*',schema:'public',table:'people',filter:'room_id=eq.'+ROOM},()=>this.hydrate()).subscribe();
+               setCloudStatus(true,'在线 · 房间：'+ROOM)}
+    };
 
     // ===== 初始化 =====
     try{
-      loadLocal();
-      setDateInputToToday(datePick);
-
-      if(roomIdInput) roomIdInput.value = ROOM; if(supaUrlInput) supaUrlInput.value = SUPA_URL; if(supaKeyInput) supaKeyInput.value = SUPA_KEY;
-      if (AUTO && cloudPanel) { cloudPanel.style.display = 'none'; }
-
-      (async function(){
-        var wantAuto = !(AUTO && AUTO.autoconnect === false);
-        if(SUPA_URL && SUPA_KEY && wantAuto){
-          var ok = await connectSupabase();
-          if(ok && ROOM){ await hydrateFromCloud(); setupRealtime(); }
-        }
-      })();
-
+      loadLocal(); setDateInputToToday(datePick);
+      if(roomIdInput)roomIdInput.value=ROOM; if(supaUrlInput)supaUrlInput.value=SUPA_URL; if(supaKeyInput)supaKeyInput.value=SUPA_KEY;
+      if(AUTO&&$('cloudPanel')) $('cloudPanel').style.display='none';
+      (async()=>{const want=!(AUTO&&AUTO.autoconnect===false); if(SUPA_URL&&SUPA_KEY&&want){const ok=await Cloud.connect(); if(ok&&ROOM){await Cloud.hydrate(); Cloud.realtime();}}})();
       renderAll();
-    }catch(e){ log('初始化异常：'+e.message); }
+    }catch(e){log('初始化异常：'+e.message)}
 
     // ===== 事件绑定 =====
-    window.addEventListener('resize', function(){ renderAll(); });
-    document.getElementById('prevDay').addEventListener('click',function(){ var d=parseDate(datePick.value); d.setDate(d.getDate()-1); datePick.value=fmt(d); renderAll(); });
-    document.getElementById('nextDay').addEventListener('click',function(){ var d=parseDate(datePick.value); d.setDate(d.getDate()+1); datePick.value=fmt(d); renderAll(); });
-    document.getElementById('goToday').addEventListener('click',function(){ setDateInputToToday(datePick); renderAll(); });
-    datePick.addEventListener('change',function(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); renderAll(); });
+    addEventListener('resize',()=>renderAll());
+    $('prevDay').addEventListener('click',()=>{const d=parseDate(datePick.value);d.setDate(d.getDate()-1);datePick.value=fmt(d);renderAll()});
+    $('nextDay').addEventListener('click',()=>{const d=parseDate(datePick.value);d.setDate(d.getDate()+1);datePick.value=fmt(d);renderAll()});
+    $('goToday').addEventListener('click',()=>{setDateInputToToday(datePick);renderAll()});
+    datePick.addEventListener('change',()=>{if(!isValidDateStr(datePick.value))setDateInputToToday(datePick);renderAll()});
 
-    // 这个按钮在当前模板中不存在；为了兼容旧版，只有存在时才绑定事件
-    var resetBtn = document.getElementById('resetAll');
-    if(resetBtn){
-      resetBtn.addEventListener('click',function(){ if(confirm('仅清除本地缓存（不影响云端），确定吗？')){ state={people:DEFAULT_PEOPLE(),records:{}}; saveLocal(); renderAll(); }});
-    }
+    $('prevWeek').addEventListener('click',()=>{weekRef.setDate(weekRef.getDate()-7);renderWeek()});
+    $('nextWeek').addEventListener('click',()=>{weekRef.setDate(weekRef.getDate()+7);renderWeek()});
+    $('thisWeek').addEventListener('click',()=>{weekRef=todayDate();renderWeek()});
+    $('prevMonth').addEventListener('click',()=>{monthRef.setMonth(monthRef.getMonth()-1);renderMonth()});
+    $('nextMonth').addEventListener('click',()=>{monthRef.setMonth(monthRef.getMonth()+1);renderMonth()});
+    $('thisMonth').addEventListener('click',()=>{monthRef=todayDate();renderMonth()});
 
-    document.getElementById('prevWeek').addEventListener('click',function(){ weekRef.setDate(weekRef.getDate()-7); renderWeek(); });
-    document.getElementById('nextWeek').addEventListener('click',function(){ weekRef.setDate(weekRef.getDate()+7); renderWeek(); });
-    document.getElementById('thisWeek').addEventListener('click',function(){ weekRef=todayDate(); renderWeek(); });
-    document.getElementById('prevMonth').addEventListener('click',function(){ monthRef.setMonth(monthRef.getMonth()-1); renderMonth(); });
-    document.getElementById('nextMonth').addEventListener('click',function(){ monthRef.setMonth(monthRef.getMonth()+1); renderMonth(); });
-    document.getElementById('thisMonth').addEventListener('click',function(){ monthRef=todayDate(); renderMonth(); });
+    const setTab=w=>{if(w==='week'){tabWeek.classList.add('active');tabMonth.classList.remove('active');weekView.style.display='block';monthView.style.display='none';weekNav.style.display='flex';monthNav.style.display='none'}else{tabMonth.classList.add('active');tabWeek.classList.remove('active');weekView.style.display='none';monthView.style.display='block';weekNav.style.display='none';monthNav.style.display='flex'}};
+    tabWeek.addEventListener('click',()=>setTab('week'));
+    tabMonth.addEventListener('click',()=>setTab('month'));
+    personSelect.addEventListener('change',()=>{renderWeek();renderMonth()});
 
-    function setTab(which){ if(which==='week'){ tabWeek.classList.add('active'); tabMonth.classList.remove('active'); weekView.style.display='block'; monthView.style.display='none'; weekNav.style.display='flex'; monthNav.style.display='none'; } else { tabMonth.classList.add('active'); tabWeek.classList.remove('active'); weekView.style.display='none'; monthView.style.display='block'; weekNav.style.display='none'; monthNav.style.display='flex'; } }
-    tabWeek.addEventListener('click',function(){ setTab('week'); });
-    tabMonth.addEventListener('click',function(){ setTab('month'); });
-    personSelect.addEventListener('change',function(){ renderWeek(); renderMonth(); });
-
-    // ===== 账号登录：用户名 + 密码（内部映射到伪邮箱 username@users.local） =====
-    adminLoginBtn.addEventListener('click', async function(){
-      if(!connected){ alert('请先连接 Supabase'); return; }
-      var unameRaw = (adminUserInput.value||'').trim();
-      var pass = (adminPassInput.value||'').trim();
-      if(!unameRaw || pass.length<6){ alert('请输入用户名与≥6位密码'); return; }
-
-      // 兼容：如果用户真的输入了邮箱，就直接按邮箱登录（兼容老账号）
-      var loginEmail = /@/.test(unameRaw) ? unameRaw : unameToEmail(unameRaw);
-
-      // 先尝试登录
-      var signRes = await sb.auth.signInWithPassword({ email: loginEmail, password: pass });
-
-      if(signRes.error){
-        var msg = (signRes.error.message||'').toLowerCase();
-        if(msg.includes('invalid login credentials')){
-          // 不存在则注册（关闭邮箱验证时可直接登录；否则提示去验证）
-          var reg = await sb.auth.signUp({
-            email: loginEmail,
-            password: pass,
-            options: { data: { username: sanitizeUsername(unameRaw) } }
-          });
-          if(reg.error){ alert('注册失败：'+reg.error.message); return; }
-          // 再次尝试登录（若开启了邮箱确认而你没关，这里可能仍需邮箱验证）
-          signRes = await sb.auth.signInWithPassword({ email: loginEmail, password: pass });
-          if(signRes.error){ alert('登录失败：'+signRes.error.message+'\n如提示 Email not confirmed，请在 Auth 设置里关闭 Confirm email，或到邮箱完成验证。'); return; }
-        } else {
-          alert('登录失败：'+signRes.error.message); return;
-        }
-      }
-
-      sessionUser = signRes.data.user;
-      await resolveAdminByRoom();
-      await loadMyOrd();
-      updateAccountUI();
-      alert(isAdmin? '管理员登录成功' : '登录成功');
+    // 登录：用户名+密码（映射到 username@users.local）
+    $('adminLogin').addEventListener('click',async()=>{
+      if(!connected){alert('请先连接 Supabase');return}
+      const u=(adminUserInput.value||'').trim(); const p=(adminPassInput.value||'').trim(); if(!u||p.length<6){alert('请输入用户名与≥6位密码');return}
+      const email=/@/.test(u)?u:uname2mail(u);
+      let r=await sb.auth.signInWithPassword({email,password:p});
+      if(r.error){const code=normAuth(r.error.message); if(code==='invalid_credentials'){const reg=await sb.auth.signUp({email,password:p,options:{data:{username:sanitize(u)}}}); if(reg.error){const c2=normAuth(reg.error.message); if(c2==='email_disabled'){alert('后端未开启 Email Provider。\nAuth → Providers → Email → Enable Email Provider');return} if(c2==='signup_disabled'){alert('已禁用注册（Signups disabled）');return} alert('注册失败：'+reg.error.message);return}
+        r=await sb.auth.signInWithPassword({email,password:p}); if(r.error){const c3=normAuth(r.error.message); if(c3==='email_not_confirmed'){alert('Email 未验证。\n可在 Auth → Providers → Email 关闭 Confirm email 或前往邮箱验证');return} alert('登录失败：'+r.error.message);return}
+      }else if(code==='email_disabled'){alert('后端未开启 Email Provider。\n请到 Auth → Providers → Email 启用');return}}
+      sessionUser=r.data.user; await Cloud.resolveAdmin(); await Cloud.loadMyOrd(); updateAccountUI(); alert(isAdmin?'管理员登录成功':'登录成功');
     });
 
-    adminLogoutBtn.addEventListener('click', async function(){ if(connected){ await sb.auth.signOut(); } sessionUser=null; isAdmin=false; myOrd=null; updateAccountUI(); renderAll(); });
+    $('adminLogout').addEventListener('click',async()=>{if(connected)await sb.auth.signOut(); sessionUser=null; isAdmin=false; myOrd=null; updateAccountUI(); renderAll()});
 
-    // 绑定我的行
-    bindMyOrdBtn.addEventListener('click', async function(){
-      if(!sessionUser || !ROOM || !connected){ alert('请先连接并登录'); return; }
-      var ord = parseInt(myOrdSelect.value,10);
-      var up = await sb.from('members').upsert({ room_id: ROOM, uid: sessionUser.id, ord: ord }, { onConflict: 'room_id,uid' });
-      if(up.error){ alert('绑定失败：'+up.error.message); return; }
-      myOrd = ord; updateAccountUI(); renderAll(); alert('已绑定到第 '+ord+' 行');
-    });
+    $('bindMyOrd').addEventListener('click',async()=>{if(!sessionUser||!ROOM||!connected){alert('请先连接并登录');return}const ord=parseInt(myOrdSelect.value,10);const up=await sb.from('members').upsert({room_id:ROOM,uid:sessionUser.id,ord},{onConflict:'room_id,uid'});if(up.error){alert('绑定失败：'+up.error.message);return}myOrd=ord;updateAccountUI();renderAll();alert('已绑定到第 '+ord+' 行')});
 
-    function updateAccountUI(){ refreshMyOrdSelect(); updateUIEnables(); }
+    $('connectCloud').addEventListener('click',async()=>{ROOM=roomIdInput.value.trim();SUPA_URL=supaUrlInput.value.trim();SUPA_KEY=supaKeyInput.value.trim();localStorage.setItem('room_id',ROOM);localStorage.setItem('supa_url',SUPA_URL);localStorage.setItem('supa_key',SUPA_KEY);const ok=await Cloud.connect();if(ok){if(ROOM){await Cloud.hydrate();Cloud.realtime();await Cloud.resolveAdmin();await Cloud.loadMyOrd();updateAccountUI()}else alert('已连接 Supabase，但未填写房间码')}});
 
-    // ===== 云端：读写 & 实时 =====
-    async function hydrateFromCloud(){ try{ var pplRes = await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord'); var ppl = pplRes.data; if(ppl && ppl.length>0){ var maxOrd = Math.max.apply(null, ppl.map(function(p){return p.ord;})); var list=new Array(maxOrd); for(var i=0;i<maxOrd;i++){ var f=null; for(var j=0;j<ppl.length;j++){ if(ppl[j].ord===i+1){ f=ppl[j]; break; } } list[i] = (f && f.name) ? f.name : ('成员'+(i+1)); } state.people = list; } else { await syncPeopleCloud(); }
-      var d = parseDate(datePick.value); await loadMonthCloud(d.getFullYear(), d.getMonth()+1); renderAll(); }catch(err){ log('hydrate异常：'+err.message); }}
-
-    async function syncPeopleCloud(){ var rows=[]; for(var i=0;i<state.people.length;i++){ rows.push({room_id:ROOM, ord:i+1, name:state.people[i]}); } var res = await sb.from('people').upsert(rows, { onConflict:'room_id,ord' }); if(res.error) log('上传成员失败：'+res.error.message); }
-
-    async function updatePersonNameCloud(ord, name){ var r = await sb.from('people').upsert({room_id:ROOM, ord:ord, name:name}, { onConflict:'room_id,ord' }); if(r.error) log('更新姓名失败：'+r.error.message); }
-
-    async function loadMonthCloud(year, month){ var ym = String(month).padStart(2,'0'); var from = year+'-'+ym+'-01'; var to = year+'-'+ym+'-31'; var q = await sb.from('records').select('date,ord,done,item').eq('room_id',ROOM).gte('date',from).lte('date',to); if(q.error){ log('拉取记录失败：'+q.error.message); return; } var d0 = new Date(year, month-1, 1); var last = new Date(year, month, 0); var byKey = {}; q.data.forEach(function(r){ var k = ''+r.date; var arr = byKey[k] || []; arr[r.ord-1] = {done:!!r.done,item:r.item||''}; byKey[k] = arr; }); var cur = new Date(d0); while(cur<=last){ var k=fmt(cur); var n=state.people.length; var arr=new Array(n); for(var i=0;i<n;i++){ arr[i]={done:false,item:''}; }
-      var has = byKey[k]||[]; for(var j=0;j<n;j++){ if(has[j]) arr[j]=has[j]; } state.records[k]=arr; cur.setDate(cur.getDate()+1);} saveLocal(); }
-
-    async function upsertRecordCloud(dateStr, ordIndex, entry){ var r = await sb.from('records').upsert({ room_id:ROOM, date:dateStr, ord:ordIndex+1, done:!!entry.done, item: entry.item||'' }, { onConflict:'room_id,date,ord' }); if(r.error) log('写入记录失败：'+r.error.message); }
-
-    async function resolveAdminByRoom(){ if(!connected || !ROOM){ isAdmin=false; return; } try{ var q = await sb.from('rooms').select('admin_uid').eq('room_id',ROOM).maybeSingle(); if(q.error && q.error.code!=='PGRST116'){ log('查询房间失败：'+q.error.message); isAdmin=false; return; } if(!q.data){ if(sessionUser){ await sb.from('rooms').insert({room_id:ROOM, admin_uid:sessionUser.id}); isAdmin=true; } else { isAdmin=false; } } else { isAdmin = !!sessionUser && q.data.admin_uid === sessionUser.id; } }catch(err){ log('resolveAdmin异常：'+err.message); isAdmin=false; }
-    }
-
-    async function loadMyOrd(){ if(!connected || !ROOM || !sessionUser){ myOrd=null; return; } var q = await sb.from('members').select('ord').eq('room_id',ROOM).eq('uid',sessionUser.id).maybeSingle(); if(q.error && q.error.code!=='PGRST116'){ log('查询我的编号失败：'+q.error.message); } myOrd = (q.data && q.data.ord) ? q.data.ord : null; }
-
-    function setupRealtime(){ sb.channel('realtime:records').on('postgres_changes', { event:'*', schema:'public', table:'records', filter:'room_id=eq.'+ROOM }, function(payload){ var r = payload['new'] || payload['old']; if(!r) return; var k = r.date; ensureDay(k); var idx=r.ord-1; if(payload.eventType==='DELETE'){ state.records[k][idx] = {done:false,item:''}; } else { state.records[k][idx] = {done:!!r.done, item:r.item||''}; } saveLocal(); renderSummary(); if(k===datePick.value) renderTable(); renderWeek(); renderMonth(); }).subscribe();
-      sb.channel('realtime:people').on('postgres_changes', { event:'*', schema:'public', table:'people', filter:'room_id=eq.'+ROOM }, function(){ hydrateFromCloud(); }).subscribe(); setCloudStatus(true,'在线 · 房间：'+ROOM); }
-
-    connectBtn.addEventListener('click', async function(){
-      ROOM = roomIdInput.value.trim(); SUPA_URL = supaUrlInput.value.trim(); SUPA_KEY = supaKeyInput.value.trim();
-      localStorage.setItem('room_id', ROOM); localStorage.setItem('supa_url', SUPA_URL); localStorage.setItem('supa_key', SUPA_KEY);
-      var ok = await connectSupabase(); if(ok){ if(ROOM){ await hydrateFromCloud(); setupRealtime(); await resolveAdminByRoom(); await loadMyOrd(); updateAccountUI(); } else { alert('已连接 Supabase，但未填写房间码'); } }
-    });
-
-    // ===== 自检（基础 + 权限） =====
-    function runSelfTests(){
-      try{
-        var results = [];
-        results.push(['T1 isValidDate', isValidDateStr(datePick.value)]);
-        var expectedRows = isMobile()? state.people.length*2 : state.people.length;
-        results.push(['T2 tableRows', peopleBody.children.length === expectedRows]);
-        var dateStr = fmt(todayDate()); ensureDay(dateStr);
-        var before = !!(state.records[dateStr][0] && state.records[dateStr][0].done); setDone(dateStr,0,!before);
-        var after = !!(state.records[dateStr][0] && state.records[dateStr][0].done); setDone(dateStr,0,before);
-        results.push(['T3 toggle', after === !before]);
-        results.push(['T4 personSelectOptions', personSelect.options.length === state.people.length]);
-        results.push(['T5 weekHead >=8', weekHeadRow.children.length >= 8]);
-        results.push(['T6 monthGrid >0', monthGrid.children.length > 0]);
-        results.push(['T7 nonAdminLockCount', true]);
-        var invalidParse = parseDate('bad-date');
-        results.push(['T8 parseDate fallback today', fmt(invalidParse) === fmt(todayDate())]);
-        var tempDate = new Date(2025,0,1); var wr2 = getWeekRange(tempDate);
-        results.push(['T9 weekRange 7days', ( (wr2.end - wr2.start)/86400000 + 1 ) === 7 ]);
-        results.push(['T10 uname→email mapping', unameToEmail('Alice') === 'alice@users.local' ]);
-        // 新增用例：用户名规范化小写
-        results.push(['T11 sanitize lowers', sanitizeUsername('User.Name') === 'user.name']);
-        console.table(results);
-      }catch(err){ log('自检异常：'+err.message); }
-    }
-    runSelfTests();
-
+    // ===== 自检（精简） =====
+    (function tests(){try{const res=[];res.push(['T1 date valid',isValidDateStr(datePick.value)]);const ds=fmt(todayDate());ensureDay(ds);const b=!!state.records[ds][0].done;setDone(ds,0,!b);const a=!!state.records[ds][0].done;setDone(ds,0,b);res.push(['T2 toggle ok',a===!b]);res.push(['T3 select count',personSelect.options.length===state.people.length]);res.push(['T4 month grid',monthGrid.children.length>=28]);res.push(['T5 uname map',uname2mail('Alice')==='alice@users.local']);console.table(res)}catch(e){log('自检异常：'+e.message)}})();
   })();
   </script>
-
-  
+</body>
+</html>
