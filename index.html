@@ -169,7 +169,7 @@
   <!-- 自动配置：把你的固定配置放到 config.js，并在这里引入
        window.SUPA_AUTO = { url:'https://xxxxx.supabase.co', anon:'<anon key>', defaultRoom:'lab-2025', autoconnect:true };
        访问者将自动连接，可用 ?room=xxx 覆盖房间。  -->
-  <script src="./config.js"></script>
+  <!-- <script src="./config.js"></script> -->
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
@@ -391,7 +391,11 @@
     document.getElementById('goToday').addEventListener('click',function(){ setDateInputToToday(datePick); renderAll(); });
     datePick.addEventListener('change',function(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); renderAll(); });
 
-    document.getElementById('resetAll').addEventListener('click',function(){ if(confirm('仅清除本地缓存（不影响云端），确定吗？')){ state={people:DEFAULT_PEOPLE(),records:{}}; saveLocal(); renderAll(); }});
+    // 这个按钮在当前模板中不存在；为了兼容旧版，只有存在时才绑定事件
+    var resetBtn = document.getElementById('resetAll');
+    if(resetBtn){
+      resetBtn.addEventListener('click',function(){ if(confirm('仅清除本地缓存（不影响云端），确定吗？')){ state={people:DEFAULT_PEOPLE(),records:{}}; saveLocal(); renderAll(); }});
+    }
 
     document.getElementById('prevWeek').addEventListener('click',function(){ weekRef.setDate(weekRef.getDate()-7); renderWeek(); });
     document.getElementById('nextWeek').addEventListener('click',function(){ weekRef.setDate(weekRef.getDate()+7); renderWeek(); });
@@ -430,8 +434,7 @@
           if(reg.error){ alert('注册失败：'+reg.error.message); return; }
           // 再次尝试登录（若开启了邮箱确认而你没关，这里可能仍需邮箱验证）
           signRes = await sb.auth.signInWithPassword({ email: loginEmail, password: pass });
-          if(signRes.error){ alert('登录失败：'+signRes.error.message+'
-如提示 Email not confirmed，请在 Auth 设置里关闭 Confirm email，或到邮箱完成验证。'); return; }
+          if(signRes.error){ alert('登录失败：'+signRes.error.message+'\n如提示 Email not confirmed，请在 Auth 设置里关闭 Confirm email，或到邮箱完成验证。'); return; }
         } else {
           alert('登录失败：'+signRes.error.message); return;
         }
@@ -504,6 +507,8 @@
         var tempDate = new Date(2025,0,1); var wr2 = getWeekRange(tempDate);
         results.push(['T9 weekRange 7days', ( (wr2.end - wr2.start)/86400000 + 1 ) === 7 ]);
         results.push(['T10 uname→email mapping', unameToEmail('Alice') === 'alice@users.local' ]);
+        // 新增用例：用户名规范化小写
+        results.push(['T11 sanitize lowers', sanitizeUsername('User.Name') === 'user.name']);
         console.table(results);
       }catch(err){ log('自检异常：'+err.message); }
     }
@@ -511,5 +516,3 @@
 
   })();
   </script>
-</body>
-</html>
