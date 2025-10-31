@@ -10,14 +10,8 @@
     html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC",Helvetica,Arial,"Microsoft Yahei",sans-serif;overflow-y:auto}
     header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0b1220,rgba(11,18,32,.85));-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
-    /* 若浏览器不支持/存在兼容问题，降级背景以避免遮挡 */
-    @supports not ((backdrop-filter: blur(6px))) {
-      header{background:#0b1220}
-    }
-    /* 移动端：取消 sticky 与毛玻璃，避免个别浏览器渲染层把后续内容挡住 */
-    @media (max-width: 768px){
-      header{position:static;-webkit-backdrop-filter:none;backdrop-filter:none}
-    }
+    @supports not ((backdrop-filter: blur(6px))) { header{background:#0b1220} }
+    @media (max-width: 768px){ header{position:static;-webkit-backdrop-filter:none;backdrop-filter:none} }
 
     .wrap{max-width:1200px;margin:0 auto;padding:16px}
     .title{display:flex;align-items:center;gap:12px}
@@ -65,6 +59,15 @@
     .dot-on{background:#10b981}
     @media print{header,.no-print{display:none!important}body{background:#fff;color:#000}.card{border-color:#ccc}.table th,.table td{border-bottom-color:#ddd}}
     #dbg{position:fixed;bottom:8px;left:8px;background:#1a2236;border:1px solid #2a3b63;border-radius:8px;padding:6px 8px;font-size:12px;color:#9fb4ff;opacity:.9;max-width:calc(100vw - 24px);word-break:break-all}
+
+    /* —— 移动端：主表格两行布局 —— */
+    @media (max-width:768px){
+      #peopleTable thead{display:none}
+      .table td{padding:8px 6px}
+      .stack-label{display:inline-block;color:var(--muted);font-size:12px;margin-right:6px}
+      .row-split{background:transparent}
+      .row-split + .row-split td{border-top:none}
+    }
   </style>
 </head>
 <body>
@@ -184,6 +187,7 @@
     function parseDate(s){ if(!isValidDateStr(s)) return todayDate(); var a=s.split('-'); var y=Number(a[0]), m=Number(a[1]), da=Number(a[2]); var d=new Date(y,m-1,da); return isNaN(d.getTime())? todayDate() : cloneDate(d); }
     function setDateInputToToday(input){ var t=todayDate(); try{ if('valueAsDate' in input) input.valueAsDate=t; }catch(e){} input.value=fmt(t); }
     function getWeekRange(d){ var day=d.getDay(); var diffToMon=(day+6)%7; var start=cloneDate(d); start.setDate(start.getDate()-diffToMon); var end=cloneDate(start); end.setDate(start.getDate()+6); return {start:start,end:end}; }
+    function isMobile(){ return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
 
     // ===== 状态与云配置 =====
     var STORAGE_KEY='exercise-tracker-v5';
@@ -272,22 +276,50 @@
     // ===== 权限辅助 =====
     function canEditNameRow(i){ return isAdmin || (sessionUser && myOrd === i+1); }
 
-    // ===== 渲染：日表格 =====
-    function renderTable(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); var dateStr=datePick.value; ensureDay(dateStr); var arr=state.records[dateStr]; peopleBody.innerHTML=''; var doneCount=0; var d=parseDate(dateStr); weekdayEl.textContent = weekdayStr(d)+'（'+fmt(d)+'）'; var wr=getWeekRange(d); var weekStart=wr.start, weekEnd=wr.end; var monthStart=new Date(d.getFullYear(),d.getMonth(),1); var monthEnd=new Date(d.getFullYear(),d.getMonth()+1,0);
+    // ===== 渲染：日表格（桌面：一行；移动：两行） =====
+    function renderTable(){
+      if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick);
+      var dateStr=datePick.value; ensureDay(dateStr); var arr=state.records[dateStr];
+      peopleBody.innerHTML=''; var doneCount=0; var d=parseDate(dateStr);
+      weekdayEl.textContent = weekdayStr(d)+'（'+fmt(d)+'）';
+      var wr=getWeekRange(d); var weekStart=wr.start, weekEnd=wr.end;
+      var monthStart=new Date(d.getFullYear(),d.getMonth(),1); var monthEnd=new Date(d.getFullYear(),d.getMonth()+1,0);
+      var mobile = isMobile();
+
       for(var i=0;i<state.people.length;i++){
         var e=arr[i]; var done=getDone(e); if(done) doneCount++; var item=getItem(e);
-        var tr=document.createElement('tr');
-        var tdIdx=document.createElement('td'); tdIdx.textContent=(i+1); tr.appendChild(tdIdx);
-        var tdName=document.createElement('td'); var nameInput=document.createElement('input'); nameInput.className='name-input'; nameInput.type='text'; nameInput.value=state.people[i]; nameInput.placeholder='成员'+(i+1); nameInput.readOnly=!canEditNameRow(i); nameInput.addEventListener('change',function(i,nameInput){ return async function(){ var newName=(nameInput.value.trim()||('成员'+(i+1))); if(!canEditNameRow(i)){ nameInput.value=state.people[i]; return; } state.people[i]=newName; saveLocal(); renderPersonSelect(); if(connected && ROOM){ if(isAdmin){ await syncPeopleCloud(); } else { await updatePersonNameCloud(i+1,newName); } } }; }(i,nameInput)); tdName.appendChild(nameInput); tr.appendChild(tdName);
-        var tdCheck=document.createElement('td'); tdCheck.className='center'; var sw=document.createElement('div'); sw.setAttribute('role','switch'); sw.className='switch'+(done?' on':''); sw.addEventListener('click',function(i,sw){ return function(){ var nv=!getDone(state.records[dateStr][i]); setDone(dateStr,i,nv); sw.classList.toggle('on',nv); renderSummary(); }; }(i,sw)); tdCheck.appendChild(sw); tr.appendChild(tdCheck);
-        var tdItem=document.createElement('td'); var itemInput=document.createElement('input'); itemInput.className='name-input'; itemInput.type='text'; itemInput.placeholder='如：跑步20分钟 / 骑行5km'; itemInput.value=item; itemInput.addEventListener('change',function(i,itemInput){ return function(){ setItem(dateStr,i,itemInput.value); }; }(i,itemInput)); tdItem.appendChild(itemInput); tr.appendChild(tdItem);
-        var tdWeek=document.createElement('td'); tdWeek.className='right'; tdWeek.innerHTML='<span class="pill">'+personRangeCount(i,weekStart,weekEnd)+' 次</span>'; tr.appendChild(tdWeek);
-        var tdMonth=document.createElement('td'); tdMonth.className='right'; tdMonth.innerHTML='<span class="pill">'+personRangeCount(i,monthStart,monthEnd)+' 次</span>'; tr.appendChild(tdMonth);
-        peopleBody.appendChild(tr);
+
+        if(!mobile){
+          // —— 桌面：一行 ——
+          var tr=document.createElement('tr');
+          var tdIdx=document.createElement('td'); tdIdx.textContent=(i+1); tr.appendChild(tdIdx);
+          var tdName=document.createElement('td'); var nameInput=document.createElement('input'); nameInput.className='name-input'; nameInput.type='text'; nameInput.value=state.people[i]; nameInput.placeholder='成员'+(i+1); nameInput.readOnly=!canEditNameRow(i); nameInput.addEventListener('change',function(i,nameInput){ return async function(){ var newName=(nameInput.value.trim()||('成员'+(i+1))); if(!canEditNameRow(i)){ nameInput.value=state.people[i]; return; } state.people[i]=newName; saveLocal(); renderPersonSelect(); if(connected && ROOM){ if(isAdmin){ await syncPeopleCloud(); } else { await updatePersonNameCloud(i+1,newName); } } }; }(i,nameInput)); tdName.appendChild(nameInput); tr.appendChild(tdName);
+          var tdCheck=document.createElement('td'); tdCheck.className='center'; var sw=document.createElement('div'); sw.setAttribute('role','switch'); sw.className='switch'+(done?' on':''); sw.addEventListener('click',function(i,sw){ return function(){ var nv=!getDone(state.records[dateStr][i]); setDone(dateStr,i,nv); sw.classList.toggle('on',nv); renderSummary(); }; }(i,sw)); tdCheck.appendChild(sw); tr.appendChild(tdCheck);
+          var tdItem=document.createElement('td'); var itemInput=document.createElement('input'); itemInput.className='name-input'; itemInput.type='text'; itemInput.placeholder='如：跑步20分钟 / 骑行5km'; itemInput.value=item; itemInput.addEventListener('change',function(i,itemInput){ return function(){ setItem(dateStr,i,itemInput.value); }; }(i,itemInput)); tdItem.appendChild(itemInput); tr.appendChild(tdItem);
+          var tdWeek=document.createElement('td'); tdWeek.className='right'; tdWeek.innerHTML='<span class="pill">'+personRangeCount(i,weekStart,weekEnd)+' 次</span>'; tr.appendChild(tdWeek);
+          var tdMonth=document.createElement('td'); tdMonth.className='right'; tdMonth.innerHTML='<span class="pill">'+personRangeCount(i,monthStart,monthEnd)+' 次</span>'; tr.appendChild(tdMonth);
+          peopleBody.appendChild(tr);
+        } else {
+          // —— 移动：两行 ——
+          // 行1：# | 姓名(跨3列) | 今天运动(跨2列)
+          var r1=document.createElement('tr'); r1.className='row-split';
+          var c1=document.createElement('td'); c1.textContent=(i+1); r1.appendChild(c1);
+          var c2=document.createElement('td'); c2.colSpan=3; var nameInput2=document.createElement('input'); nameInput2.className='name-input'; nameInput2.type='text'; nameInput2.value=state.people[i]; nameInput2.placeholder='成员'+(i+1); nameInput2.readOnly=!canEditNameRow(i); nameInput2.addEventListener('change',function(i,inp){ return async function(){ var newName=(inp.value.trim()||('成员'+(i+1))); if(!canEditNameRow(i)){ inp.value=state.people[i]; return; } state.people[i]=newName; saveLocal(); renderPersonSelect(); if(connected && ROOM){ if(isAdmin){ await syncPeopleCloud(); } else { await updatePersonNameCloud(i+1,newName); } } }; }(i,nameInput2)); c2.appendChild(nameInput2); r1.appendChild(c2);
+          var c3=document.createElement('td'); c3.colSpan=2; var sw2=document.createElement('div'); sw2.setAttribute('role','switch'); sw2.className='switch'+(done?' on':''); sw2.addEventListener('click',function(i,sw){ return function(){ var nv=!getDone(state.records[dateStr][i]); setDone(dateStr,i,nv); sw.classList.toggle('on',nv); renderSummary(); }; }(i,sw2)); c3.appendChild(sw2); r1.appendChild(c3);
+          peopleBody.appendChild(r1);
+
+          // 行2：（空）| 今日项目(跨3) | 累计(跨2：周x / 月y)
+          var r2=document.createElement('tr'); r2.className='row-split';
+          var c4=document.createElement('td'); c4.textContent=''; r2.appendChild(c4);
+          var c5=document.createElement('td'); c5.colSpan=3; var lbl1=document.createElement('span'); lbl1.className='stack-label'; lbl1.textContent='今日项目'; var itemInput2=document.createElement('input'); itemInput2.className='name-input'; itemInput2.type='text'; itemInput2.placeholder='如：跑步20分钟 / 骑行5km'; itemInput2.value=item; itemInput2.addEventListener('change',function(i,inp){ return function(){ setItem(dateStr,i,inp.value); }; }(i,itemInput2)); c5.appendChild(lbl1); c5.appendChild(itemInput2); r2.appendChild(c5);
+          var c6=document.createElement('td'); c6.colSpan=2; var lbl2=document.createElement('span'); lbl2.className='stack-label'; lbl2.textContent='累计'; var pill=document.createElement('span'); pill.className='pill'; pill.textContent='周 '+personRangeCount(i,weekStart,weekEnd)+' / 月 '+personRangeCount(i,monthStart,monthEnd); c6.appendChild(lbl2); c6.appendChild(pill); r2.appendChild(c6);
+          peopleBody.appendChild(r2);
+        }
       }
       todaySummary.innerHTML='本日完成：<b class="ok">'+doneCount+'</b> / '+state.people.length;
       updateUIEnables();
     }
+
     function renderSummary(){ var dateStr=isValidDateStr(datePick.value)? datePick.value : fmt(todayDate()); var arr=state.records[dateStr]||[]; var done=arr.filter(function(e){return getDone(e);}).length; todaySummary.innerHTML='本日完成：<b class="ok">'+done+'</b> / '+state.people.length; }
 
     // ===== 周、月视图 =====
@@ -326,6 +358,7 @@
     }catch(e){ log('初始化异常：'+e.message); }
 
     // ===== 事件绑定 =====
+    window.addEventListener('resize', function(){ renderAll(); });
     document.getElementById('prevDay').addEventListener('click',function(){ var d=parseDate(datePick.value); d.setDate(d.getDate()-1); datePick.value=fmt(d); renderAll(); });
     document.getElementById('nextDay').addEventListener('click',function(){ var d=parseDate(datePick.value); d.setDate(d.getDate()+1); datePick.value=fmt(d); renderAll(); });
     document.getElementById('goToday').addEventListener('click',function(){ setDateInputToToday(datePick); renderAll(); });
@@ -399,7 +432,30 @@
     });
 
     // ===== 自检（基础 + 权限） =====
-    function runSelfTests(){ try{ var results = []; results.push(['T1 isValidDate', isValidDateStr(datePick.value)]); results.push(['T2 tableRows', peopleBody.children.length === state.people.length]); var dateStr = fmt(todayDate()); ensureDay(dateStr); var before = !!(state.records[dateStr][0] && state.records[dateStr][0].done); setDone(dateStr,0,!before); var after = !!(state.records[dateStr][0] && state.records[dateStr][0].done); setDone(dateStr,0,before); results.push(['T3 toggle', after === !before]); results.push(['T4 personSelectOptions', personSelect.options.length === state.people.length]); results.push(['T5 weekHead >=8', weekHeadRow.children.length >= 8]); results.push(['T6 monthGrid >0', monthGrid.children.length > 0]); results.push(['T7 nonAdminLockCount', (!isAdmin) ? (document.querySelectorAll('input.name-input[readonly]').length >= state.people.length - (myOrd?1:0)) : true]); var invalidParse = parseDate('bad-date'); results.push(['T8 parseDate fallback today', fmt(invalidParse) === fmt(todayDate())]); var tempDate = new Date(2025,0,1); var wr2 = getWeekRange(tempDate); results.push(['T9 weekRange 7days', ( (wr2.end - wr2.start)/86400000 + 1 ) === 7 ]); var n0 = state.people.length; resizePeople(n0); results.push(['T10 resize no-op keeps length', state.people.length === n0]); console.table(results); if(!results.every(function(t){return t[1];})) log('自检未全部通过'); }catch(err){ log('自检异常：'+err.message); } }
+    function runSelfTests(){
+      try{
+        var results = [];
+        results.push(['T1 isValidDate', isValidDateStr(datePick.value)]);
+        var expectedRows = isMobile()? state.people.length*2 : state.people.length;
+        results.push(['T2 tableRows', peopleBody.children.length === expectedRows]);
+        var dateStr = fmt(todayDate()); ensureDay(dateStr);
+        var before = !!(state.records[dateStr][0] && state.records[dateStr][0].done); setDone(dateStr,0,!before);
+        var after = !!(state.records[dateStr][0] && state.records[dateStr][0].done); setDone(dateStr,0,before);
+        results.push(['T3 toggle', after === !before]);
+        results.push(['T4 personSelectOptions', personSelect.options.length === state.people.length]);
+        results.push(['T5 weekHead >=8', weekHeadRow.children.length >= 8]);
+        results.push(['T6 monthGrid >0', monthGrid.children.length > 0]);
+        results.push(['T7 nonAdminLockCount', (!isAdmin) ? (document.querySelectorAll('input.name-input[readonly]').length >= state.people.length - (myOrd?1:0)) : true]);
+        var invalidParse = parseDate('bad-date');
+        results.push(['T8 parseDate fallback today', fmt(invalidParse) === fmt(todayDate())]);
+        var tempDate = new Date(2025,0,1); var wr2 = getWeekRange(tempDate);
+        results.push(['T9 weekRange 7days', ( (wr2.end - wr2.start)/86400000 + 1 ) === 7 ]);
+        var n0 = state.people.length; resizePeople(n0);
+        results.push(['T10 resize no-op keeps length', state.people.length === n0]);
+        console.table(results);
+        if(!results.every(function(t){return t[1];})) log('自检未全部通过');
+      }catch(err){ log('自检异常：'+err.message); }
+    }
     runSelfTests();
 
   })();
