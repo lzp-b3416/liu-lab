@@ -24,6 +24,7 @@
     input[type="text"],input[type="date"],input[type="number"],input[type="password"],input[type="email"]{cursor:text}
     button:hover,label.btnlike:hover{border-color:#335287}
     .pill{padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:#0f1730;color:var(--muted);font-size:12px}
+    .pill + .pill{margin-left:6px}
     .table{width:100%;border-collapse:collapse}
     .table th,.table td{padding:10px;text-align:left;border-bottom:1px dashed var(--border);vertical-align:middle}
     .table th{color:var(--muted);font-weight:600}
@@ -288,6 +289,8 @@
 
       for(var i=0;i<state.people.length;i++){
         var e=arr[i]; var done=getDone(e); if(done) doneCount++; var item=getItem(e);
+        var wCnt = personRangeCount(i,weekStart,weekEnd);
+        var mCnt = personRangeCount(i,monthStart,monthEnd);
 
         if(!mobile){
           // —— 桌面：一行 ——
@@ -296,8 +299,8 @@
           var tdName=document.createElement('td'); var nameInput=document.createElement('input'); nameInput.className='name-input'; nameInput.type='text'; nameInput.value=state.people[i]; nameInput.placeholder='成员'+(i+1); nameInput.readOnly=!canEditNameRow(i); nameInput.addEventListener('change',function(i,nameInput){ return async function(){ var newName=(nameInput.value.trim()||('成员'+(i+1))); if(!canEditNameRow(i)){ nameInput.value=state.people[i]; return; } state.people[i]=newName; saveLocal(); renderPersonSelect(); if(connected && ROOM){ if(isAdmin){ await syncPeopleCloud(); } else { await updatePersonNameCloud(i+1,newName); } } }; }(i,nameInput)); tdName.appendChild(nameInput); tr.appendChild(tdName);
           var tdCheck=document.createElement('td'); tdCheck.className='center'; var sw=document.createElement('div'); sw.setAttribute('role','switch'); sw.className='switch'+(done?' on':''); sw.addEventListener('click',function(i,sw){ return function(){ var nv=!getDone(state.records[dateStr][i]); setDone(dateStr,i,nv); sw.classList.toggle('on',nv); renderSummary(); }; }(i,sw)); tdCheck.appendChild(sw); tr.appendChild(tdCheck);
           var tdItem=document.createElement('td'); var itemInput=document.createElement('input'); itemInput.className='name-input'; itemInput.type='text'; itemInput.placeholder='如：跑步20分钟 / 骑行5km'; itemInput.value=item; itemInput.addEventListener('change',function(i,itemInput){ return function(){ setItem(dateStr,i,itemInput.value); }; }(i,itemInput)); tdItem.appendChild(itemInput); tr.appendChild(tdItem);
-          var tdWeek=document.createElement('td'); tdWeek.className='right'; tdWeek.innerHTML='<span class="pill">'+personRangeCount(i,weekStart,weekEnd)+' 次</span>'; tr.appendChild(tdWeek);
-          var tdMonth=document.createElement('td'); tdMonth.className='right'; tdMonth.innerHTML='<span class="pill">'+personRangeCount(i,monthStart,monthEnd)+' 次</span>'; tr.appendChild(tdMonth);
+          var tdWeek=document.createElement('td'); tdWeek.className='right'; tdWeek.innerHTML='<span class="pill">周 '+wCnt+' 次</span>'; tr.appendChild(tdWeek);
+          var tdMonth=document.createElement('td'); tdMonth.className='right'; tdMonth.innerHTML='<span class="pill">月 '+mCnt+' 次</span>'; tr.appendChild(tdMonth);
           peopleBody.appendChild(tr);
         } else {
           // —— 移动：两行 ——
@@ -308,11 +311,11 @@
           var c3=document.createElement('td'); c3.colSpan=2; var sw2=document.createElement('div'); sw2.setAttribute('role','switch'); sw2.className='switch'+(done?' on':''); sw2.addEventListener('click',function(i,sw){ return function(){ var nv=!getDone(state.records[dateStr][i]); setDone(dateStr,i,nv); sw.classList.toggle('on',nv); renderSummary(); }; }(i,sw2)); c3.appendChild(sw2); r1.appendChild(c3);
           peopleBody.appendChild(r1);
 
-          // 行2：（空）| 今日项目(跨3) | 累计(跨2：周x / 月y)
+          // 行2：（空）| 今日项目(跨3) | 累计(跨2：两个 pill 并列)
           var r2=document.createElement('tr'); r2.className='row-split';
           var c4=document.createElement('td'); c4.textContent=''; r2.appendChild(c4);
           var c5=document.createElement('td'); c5.colSpan=3; var lbl1=document.createElement('span'); lbl1.className='stack-label'; lbl1.textContent='今日项目'; var itemInput2=document.createElement('input'); itemInput2.className='name-input'; itemInput2.type='text'; itemInput2.placeholder='如：跑步20分钟 / 骑行5km'; itemInput2.value=item; itemInput2.addEventListener('change',function(i,inp){ return function(){ setItem(dateStr,i,inp.value); }; }(i,itemInput2)); c5.appendChild(lbl1); c5.appendChild(itemInput2); r2.appendChild(c5);
-          var c6=document.createElement('td'); c6.colSpan=2; var lbl2=document.createElement('span'); lbl2.className='stack-label'; lbl2.textContent='累计'; var pill=document.createElement('span'); pill.className='pill'; pill.textContent='周 '+personRangeCount(i,weekStart,weekEnd)+' / 月 '+personRangeCount(i,monthStart,monthEnd); c6.appendChild(lbl2); c6.appendChild(pill); r2.appendChild(c6);
+          var c6=document.createElement('td'); c6.colSpan=2; var lbl2=document.createElement('span'); lbl2.className='stack-label'; lbl2.textContent='累计'; var pillW=document.createElement('span'); pillW.className='pill'; pillW.textContent='周 '+wCnt+' 次'; var pillM=document.createElement('span'); pillM.className='pill'; pillM.textContent='月 '+mCnt+' 次'; c6.appendChild(lbl2); c6.appendChild(pillW); c6.appendChild(pillM); r2.appendChild(c6);
           peopleBody.appendChild(r2);
         }
       }
