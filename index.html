@@ -9,7 +9,7 @@
     *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC",Helvetica,Arial,"Microsoft Yahei",sans-serif}
     header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0b1220,rgba(11,18,32,.85));backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
     .wrap{max-width:1200px;margin:0 auto;padding:16px}
-    .title{display:flex;align-items:center;gap:12px}
+    .title{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .title h1{margin:0;font-size:20px}
     .muted{color:var(--muted)}
     .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
@@ -45,6 +45,13 @@
     .week-table th,.week-table td{padding:10px;border-bottom:1px dashed var(--border);text-align:center}
     .footer{color:var(--muted);font-size:12px;margin-top:24px}
     .status{display:inline-flex;gap:6px;align-items:center}.status-dot{width:8px;height:8px;border-radius:50%}.dot-off{background:#6b7280}.dot-on{background:#10b981}
+
+    /* 新增：全局云同步指示灯 */
+    .live-wrap{display:inline-flex;align-items:center;gap:6px}
+    .live-light{width:12px;height:12px;border-radius:999px;border:1px solid var(--border);box-shadow:0 0 6px currentColor}
+    .live-green{background:#10b981;color:#10b981}
+    .live-red{background:#ef4444;color:#ef4444}
+
     @media (max-width:768px){#peopleTable thead{display:none}.table td{padding:8px 6px}.stack-label{display:inline-block;color:var(--muted);font-size:12px;margin-right:6px}.row-split + .row-split td{border-top:none}}
   </style>
 </head>
@@ -55,6 +62,11 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 2v2M16 2v2M3 9h18M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#9fb4ff" stroke-width="1.3" stroke-linecap="round"/></svg>
         <h1>每日运动打卡（精简版）</h1>
         <span class="muted">支持多人实时；管理员可增删成员；普通用户可改自己姓名</span>
+        <!-- 新增：全局指示灯（绿色=已实现云同步；红色=未实现） -->
+        <span class="live-wrap" title="云同步状态">
+          <span class="muted">云同步</span>
+          <span id="syncLight" class="live-light live-red" aria-label="未开启"></span>
+        </span>
       </div>
       <div class="bar">
         <div class="controls card">
@@ -205,10 +217,20 @@
     const roomIdInput=$('roomIdInput'), supaUrlInput=$('supaUrl'), supaKeyInput=$('supaKey'), connectBtn=$('connectCloud');
     const adminUserInput=$('adminUser'), adminPassInput=$('adminPass'), adminLoginBtn=$('adminLogin'), adminLogoutBtn=$('adminLogout');
     const adminInfo=$('adminInfo'), myOrdSelect=$('myOrdSelect'), bindMyOrdBtn=$('bindMyOrd');
-    const dbg=$('dbg'), cloudDot=$('cloudDot'), cloudStatus=$('cloudStatus');
+    const dbg=$('dbg'), cloudDot=$('cloudDot'), cloudStatus=$('cloudStatus'), syncLight=$('syncLight');
 
     const log=msg=>{if(qp('debug')==='1'){dbg.style.display='block';dbg.textContent=String(msg)};try{console.warn('[debug]',msg)}catch{}}
     window.addEventListener('error',e=>log('脚本错误：'+(e.message||e)));
+
+    // ===== 指示灯 =====
+    const updateSyncLight=()=>{
+      if(!syncLight) return;
+      const on = !!connected && !!ROOM;
+      syncLight.classList.toggle('live-green', on);
+      syncLight.classList.toggle('live-red', !on);
+      syncLight.setAttribute('aria-label', on ? '已开启' : '未开启');
+      syncLight.title = on ? '已开启云同步（绿色）' : '未开启云同步（红色）';
+    };
 
     // ===== 记录结构 =====
     const isEntry=e=>!!e&&typeof e==='object'&&('done'in e||'item'in e);
@@ -288,9 +310,9 @@
     const refreshMyOrdSelect=()=>{myOrdSelect.innerHTML=state.people.map((n,i)=>`<option value="${i+1}">${i+1} — ${n}</option>`).join('');if(myOrd)myOrdSelect.value=String(myOrd)};
 
     // ===== 云端（封装） =====
-    const setCloudStatus=(on,msg)=>{cloudDot.classList.toggle('dot-on',!!on);cloudDot.classList.toggle('dot-off',!on);cloudStatus.textContent=msg};
+    const setCloudStatus=(on,msg)=>{cloudDot.classList.toggle('dot-on',!!on);cloudDot.classList.toggle('dot-off',!on);cloudStatus.textContent=msg;updateSyncLight()};
     const Cloud={
-      async connect(){if(!SUPA_URL||!SUPA_KEY){setCloudStatus(false,'离线（未配置）');return false}try{sb=supabase.createClient(SUPA_URL,SUPA_KEY);const probe=await sb.from('people').select('room_id',{head:true,count:'exact'}).limit(1);if(probe.error){setCloudStatus(false,'连接失败：'+probe.error.message);return false}setCloudStatus(true,ROOM?('在线 · 房间：'+ROOM):'在线（未入房间）');connected=true;const s=await sb.auth.getSession();sessionUser=s?.data?.session?.user||null;await this.resolveAdmin();await this.loadMyOrd();updateAccountUI();return true}catch(e){setCloudStatus(false,'异常：'+e.message);return false}},
+      async connect(){if(!SUPA_URL||!SUPA_KEY){setCloudStatus(false,'离线（未配置）');return false}try{sb=supabase.createClient(SUPA_URL,SUPA_KEY);const probe=await sb.from('people').select('room_id',{head:true,count:'exact'}).limit(1);if(probe.error){setCloudStatus(false,'连接失败：'+probe.error.message);return false}connected=true;setCloudStatus(true,ROOM?('在线 · 房间：'+ROOM):'在线（未入房间）');const s=await sb.auth.getSession();sessionUser=s?.data?.session?.user||null;await this.resolveAdmin();await this.loadMyOrd();updateAccountUI();return true}catch(e){setCloudStatus(false,'异常：'+e.message);return false}},
       async resolveAdmin(){if(!connected||!ROOM){isAdmin=false;return}try{const q=await sb.from('rooms').select('admin_uid').eq('room_id',ROOM).maybeSingle();if(q.error&&q.error.code!=='PGRST116'){log('房间查询失败:'+q.error.message);isAdmin=false;return}if(!q.data){if(sessionUser){await sb.from('rooms').insert({room_id:ROOM,admin_uid:sessionUser.id});isAdmin=true}else isAdmin=false}else isAdmin=!!sessionUser&&q.data.admin_uid===sessionUser.id}catch(e){log('resolveAdmin异常:'+e.message);isAdmin=false}},
       async loadMyOrd(){if(!connected||!ROOM||!sessionUser){myOrd=null;return}const q=await sb.from('members').select('ord').eq('room_id',ROOM).eq('uid',sessionUser.id).maybeSingle();if(q.error&&q.error.code!=='PGRST116')log('查我的编号失败:'+q.error.message);myOrd=q.data?.ord||null},
       async hydrate(){try{const ppl=await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');const rows=ppl.data;if(rows?.length){const max=Math.max(...rows.map(p=>p.ord));state.people=Array.from({length:max},(_,i)=>rows.find(p=>p.ord===i+1)?.name||('成员'+(i+1)))}else{await this.syncPeople()}const d=parseDate(datePick.value);await this.loadMonth(d.getFullYear(),d.getMonth()+1);renderAll()}catch(e){log('hydrate异常:'+e.message)}},
@@ -308,6 +330,7 @@
       loadLocal(); setDateInputToToday(datePick);
       if(roomIdInput)roomIdInput.value=ROOM; if(supaUrlInput)supaUrlInput.value=SUPA_URL; if(supaKeyInput)supaKeyInput.value=SUPA_KEY;
       if(AUTO&&$('cloudPanel')) $('cloudPanel').style.display='none';
+      updateSyncLight(); // 初始：未连接或未入房间 → 红色
       (async()=>{const want=!(AUTO&&AUTO.autoconnect===false); if(SUPA_URL&&SUPA_KEY&&want){const ok=await Cloud.connect(); if(ok&&ROOM){await Cloud.hydrate(); Cloud.realtime();}}})();
       renderAll();
     }catch(e){log('初始化异常：'+e.message)}
@@ -337,13 +360,34 @@
       const u=(adminUserInput.value||'').trim(); const p=(adminPassInput.value||'').trim(); if(!u||p.length<6){alert('请输入用户名与≥6位密码');return}
       const email=/@/.test(u)?u:uname2mail(u);
       let r=await sb.auth.signInWithPassword({email,password:p});
-      if(r.error){const code=normAuth(r.error.message); if(code==='invalid_credentials'){const reg=await sb.auth.signUp({email,password:p,options:{data:{username:sanitize(u)}}}); if(reg.error){const c2=normAuth(reg.error.message); if(c2==='email_disabled'){alert('后端未开启 Email Provider。\nAuth → Providers → Email → Enable Email Provider');return} if(c2==='signup_disabled'){alert('已禁用注册（Signups disabled）');return} alert('注册失败：'+reg.error.message);return}
-        r=await sb.auth.signInWithPassword({email,password:p}); if(r.error){const c3=normAuth(r.error.message); if(c3==='email_not_confirmed'){alert('Email 未验证。\n可在 Auth → Providers → Email 关闭 Confirm email 或前往邮箱验证');return} alert('登录失败：'+r.error.message);return}
-      }else if(code==='email_disabled'){alert('后端未开启 Email Provider。\n请到 Auth → Providers → Email 启用');return}}
-      sessionUser=r.data.user; await Cloud.resolveAdmin(); await Cloud.loadMyOrd(); updateAccountUI(); alert(isAdmin?'管理员登录成功':'登录成功');
+      if(r.error){
+        const code=normAuth(r.error.message);
+        if(code==='invalid_credentials'){
+          const reg=await sb.auth.signUp({email,password:p,options:{data:{username:sanitize(u)}}});
+          if(reg.error){
+            const c2=normAuth(reg.error.message);
+            if(c2==='email_disabled'){alert('后端未开启 Email Provider。\nAuth → Providers → Email → Enable Email Provider');return}
+            if(c2==='signup_disabled'){alert('已禁用注册（Signups disabled）');return}
+            alert('注册失败：'+reg.error.message);return
+          }
+          r=await sb.auth.signInWithPassword({email,password:p});
+          if(r.error){
+            const c3=normAuth(r.error.message);
+            if(c3==='email_not_confirmed'){alert('Email 未验证。\n可在 Auth → Providers → Email 关闭 Confirm email 或前往邮箱验证');return}
+            alert('登录失败：'+r.error.message);return
+          }
+        } else if(code==='email_disabled'){
+          alert('后端未开启 Email Provider。\n请到 Auth → Providers → Email 启用');
+          return;
+        } else {
+          alert('登录失败：'+r.error.message);
+          return;
+        }
+      }
+      sessionUser=r.data.user; await Cloud.resolveAdmin(); await Cloud.loadMyOrd(); updateAccountUI(); alert(isAdmin?'管理员登录成功':'登录成功')
     });
 
-    $('adminLogout').addEventListener('click',async()=>{if(connected)await sb.auth.signOut(); sessionUser=null; isAdmin=false; myOrd=null; updateAccountUI(); renderAll()});
+    $('adminLogout').addEventListener('click',async()=>{if(connected)await sb.auth.signOut(); sessionUser=null; isAdmin=false; myOrd=null; updateAccountUI(); renderAll(); updateSyncLight()});
 
     $('bindMyOrd').addEventListener('click',async()=>{if(!sessionUser||!ROOM||!connected){alert('请先连接并登录');return}const ord=parseInt(myOrdSelect.value,10);const up=await sb.from('members').upsert({room_id:ROOM,uid:sessionUser.id,ord},{onConflict:'room_id,uid'});if(up.error){alert('绑定失败：'+up.error.message);return}myOrd=ord;updateAccountUI();renderAll();alert('已绑定到第 '+ord+' 行')});
 
