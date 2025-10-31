@@ -89,12 +89,6 @@
           <span id="weekday" class="pill"></span>
           <span id="todaySummary" class="pill"></span>
         </div>
-        <div class="controls card no-print">
-          <span class="muted">成员设置（仅管理员可改人数/增删）：</span>
-          <label>人数 <input id="memberCount" type="number" min="1" max="200" style="width:80px"/></label>
-          <button id="applyMemberCount">应用</button>
-          <button id="resetAll" class="warn">重置本地缓存</button>
-        </div>
         <div class="controls card no-print" id="cloudPanel">
           <span class="muted">云同步（Supabase 实时）</span>
           <label>房间码 <input id="roomIdInput" type="text" placeholder="如 lab-2025" style="width:120px"></label>
@@ -172,6 +166,11 @@
 
   <div id="dbg" class="no-print" style="display:none"></div>
 
+  <!-- 可选：把你的固定配置放到一个独立的 config.js 里，并在这里引入
+       内容格式：window.SUPA_AUTO = { url:'https://xxxxx.supabase.co', anon:'<你的anon key>', defaultRoom:'lab-2025', autoconnect:true };
+       然后所有访问者将自动连接，且通过 ?room=xxx 可切换房间。  -->
+  <script src="./config.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
   (function(){
@@ -189,15 +188,30 @@
     function setDateInputToToday(input){ var t=todayDate(); try{ if('valueAsDate' in input) input.valueAsDate=t; }catch(e){} input.value=fmt(t); }
     function getWeekRange(d){ var day=d.getDay(); var diffToMon=(day+6)%7; var start=cloneDate(d); start.setDate(start.getDate()-diffToMon); var end=cloneDate(start); end.setDate(start.getDate()+6); return {start:start,end:end}; }
     function isMobile(){ return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
+    function getQueryParam(name){ var m = new RegExp('[?&]'+name+'=([^&#]*)').exec(window.location.search); return m? decodeURIComponent(m[1].replace(/\+/g,' ')) : null; }
 
     // ===== 状态与云配置 =====
     var STORAGE_KEY='exercise-tracker-v5';
     var DEFAULT_PEOPLE=function(n){ n=n||20; var arr=[]; for(var i=0;i<n;i++){ arr.push('成员'+(i+1)); } return arr; };
     var state={ people: DEFAULT_PEOPLE(20), records:{} };
 
+    // 从 localStorage 读初值
     var ROOM = localStorage.getItem('room_id') || '';
     var SUPA_URL = localStorage.getItem('supa_url') || '';
     var SUPA_KEY = localStorage.getItem('supa_key') || '';
+
+    // 读取可选的全局自动配置（由外部 config.js 或内联脚本提供）
+    var AUTO = (window.SUPA_AUTO && typeof window.SUPA_AUTO === 'object') ? window.SUPA_AUTO : null;
+    // 支持通过链接参数覆写房间：?room=xxx 或 ?r=xxx 或 ?rid=xxx
+    var roomFromQS = getQueryParam('room') || getQueryParam('r') || getQueryParam('rid');
+    if (roomFromQS) { ROOM = roomFromQS; localStorage.setItem('room_id', ROOM); }
+    if (AUTO && AUTO.url && AUTO.anon) {
+      SUPA_URL = AUTO.url; SUPA_KEY = AUTO.anon;
+      localStorage.setItem('supa_url', SUPA_URL);
+      localStorage.setItem('supa_key', SUPA_KEY);
+      if (!ROOM && AUTO.defaultRoom) { ROOM = AUTO.defaultRoom; localStorage.setItem('room_id', ROOM); }
+    }
+
     var sb = null, connected=false;
 
     // 登录/权限
@@ -259,6 +273,7 @@
     var adminInfo=document.getElementById('adminInfo');
     var myOrdSelect=document.getElementById('myOrdSelect');
     var bindMyOrdBtn=document.getElementById('bindMyOrd');
+    var cloudPanel=document.getElementById('cloudPanel');
 
     // ===== 调试显示 =====
     var dbg=document.getElementById('dbg');
@@ -334,29 +349,35 @@
 
     // ===== 渲染总控 =====
     function renderPersonSelect(){ var sel=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1)); var html=''; for(var i=0;i<state.people.length;i++){ html += '<option value="'+i+'">'+state.people[i]+'</option>'; } personSelect.innerHTML=html; personSelect.selectedIndex=Math.min(sel,state.people.length-1); refreshMyOrdSelect(); }
-    function renderAll(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); memberCountInput.value=state.people.length; renderPersonSelect(); renderTable(); renderWeek(); renderMonth(); }
+    function renderAll(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); if(memberCountInput) memberCountInput.value=state.people.length; renderPersonSelect(); renderTable(); renderWeek(); renderMonth(); }
 
-    function updateUIEnables(){ memberCountInput.disabled = !isAdmin; applyMemberBtn.disabled = !isAdmin; adminInfo.textContent = sessionUser? (isAdmin? ('管理员：'+sessionUser.email) : ('已登录：'+sessionUser.email)) : '未登录'; bindMyOrdBtn.disabled = !(sessionUser && ROOM && connected); myOrdSelect.disabled = !(sessionUser && ROOM && connected); }
+    function updateUIEnables(){ if(memberCountInput) memberCountInput.disabled = !isAdmin; if(applyMemberBtn) applyMemberBtn.disabled = !isAdmin; adminInfo.textContent = sessionUser? (isAdmin? ('管理员：'+sessionUser.email) : ('已登录：'+sessionUser.email)) : '未登录'; bindMyOrdBtn.disabled = !(sessionUser && ROOM && connected); myOrdSelect.disabled = !(sessionUser && ROOM && connected); }
 
     function refreshMyOrdSelect(){ var n=state.people.length; var opts=''; for(var i=0;i<n;i++){ opts += '<option value="'+(i+1)+'">'+(i+1)+' — '+state.people[i]+'</option>'; } myOrdSelect.innerHTML = opts; if(myOrd){ myOrdSelect.value = String(myOrd); } }
 
     // ===== 人数调整（仅管理员） =====
-    function resizePeople(newCount){ if(!isAdmin){ alert('仅管理员可修改成员人数'); return; } var oldCount=state.people.length; var n=parseInt(newCount,10); if(!n||n<1) n=oldCount; n=Math.min(200,Math.max(1,n)); if(n===oldCount){ memberCountInput.value=n; renderAll(); return; } if(n>oldCount){ for(var i=oldCount;i<n;i++) state.people.push('成员'+(i+1)); } else { state.people=state.people.slice(0,n); if(myOrd && myOrd>n) myOrd=null; } for(var k in state.records){ if(!state.records.hasOwnProperty(k)) continue; var arr=state.records[k]||[]; var norm=new Array(n); for(var j=0;j<n;j++){ if(j<arr.length){ var e=arr[j]; norm[j]=isObjEntry(e)? {done:!!e.done,item:(e.item||'')} : {done:!!e,item:''}; } else { norm[j]={done:false,item:''}; } } state.records[k]=norm; } saveLocal(); renderAll(); if(connected && ROOM) syncPeopleCloud(); }
+    function resizePeople(newCount){ if(!isAdmin){ alert('仅管理员可修改成员人数'); return; } var oldCount=state.people.length; var n=parseInt(newCount,10); if(!n||n<1) n=oldCount; n=Math.min(200,Math.max(1,n)); if(n===oldCount){ if(memberCountInput) memberCountInput.value=n; renderAll(); return; } if(n>oldCount){ for(var i=oldCount;i<n;i++) state.people.push('成员'+(i+1)); } else { state.people=state.people.slice(0,n); if(myOrd && myOrd>n) myOrd=null; } for(var k in state.records){ if(!state.records.hasOwnProperty(k)) continue; var arr=state.records[k]||[]; var norm=new Array(n); for(var j=0;j<n;j++){ if(j<arr.length){ var e=arr[j]; norm[j]=isObjEntry(e)? {done:!!e.done,item:(e.item||'')} : {done:!!e,item:''}; } else { norm[j]={done:false,item:''}; } } state.records[k]=norm; } saveLocal(); renderAll(); if(connected && ROOM) syncPeopleCloud(); }
 
     // ===== 初始化 =====
     try{
       loadLocal();
       setDateInputToToday(datePick);
-      roomIdInput.value = ROOM; supaUrlInput.value = SUPA_URL; supaKeyInput.value = SUPA_KEY;
+
+      // 自动填充 UI 输入框
+      if(roomIdInput) roomIdInput.value = ROOM; if(supaUrlInput) supaUrlInput.value = SUPA_URL; if(supaKeyInput) supaKeyInput.value = SUPA_KEY;
+
+      // 若提供了 AUTO 配置，隐藏云配置面板
+      if (AUTO && cloudPanel) { cloudPanel.style.display = 'none'; }
+
       (async function(){
-        if(SUPA_URL && SUPA_KEY){
+        // 如果已具备 URL/Key，并且（AUTO 未显式禁用自动连接），则自动连接
+        var wantAuto = !(AUTO && AUTO.autoconnect === false);
+        if(SUPA_URL && SUPA_KEY && wantAuto){
           var ok = await connectSupabase();
-          if(ok && ROOM){
-            await hydrateFromCloud();
-            setupRealtime();
-          }
+          if(ok && ROOM){ await hydrateFromCloud(); setupRealtime(); }
         }
       })();
+
       renderAll();
     }catch(e){ log('初始化异常：'+e.message); }
 
@@ -369,8 +390,8 @@
 
     document.getElementById('resetAll').addEventListener('click',function(){ if(confirm('仅清除本地缓存（不影响云端），确定吗？')){ state={people:DEFAULT_PEOPLE(),records:{}}; saveLocal(); renderAll(); }});
 
-    applyMemberBtn.addEventListener('click',function(){ resizePeople(memberCountInput.value); });
-    memberCountInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ resizePeople(memberCountInput.value); }});
+    if(applyMemberBtn) applyMemberBtn.addEventListener('click',function(){ resizePeople(memberCountInput.value); });
+    if(memberCountInput) memberCountInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ resizePeople(memberCountInput.value); }});
 
     document.getElementById('prevWeek').addEventListener('click',function(){ weekRef.setDate(weekRef.getDate()-7); renderWeek(); });
     document.getElementById('nextWeek').addEventListener('click',function(){ weekRef.setDate(weekRef.getDate()+7); renderWeek(); });
@@ -389,7 +410,8 @@
       if(!connected){ alert('请先连接 Supabase'); return; }
       var email = adminEmailInput.value.trim(); var pass = adminPassInput.value.trim(); if(!email || pass.length<6){ alert('请输入有效邮箱与6位以上密码'); return; }
       var signRes = await sb.auth.signInWithPassword({ email: email, password: pass });
-      if(signRes.error){ var ok = confirm('登录失败，是否注册并登录？'); if(!ok) return; var reg = await sb.auth.signUp({ email: email, password: pass }); if(reg.error){ alert('注册失败：'+reg.error.message); return; } signRes = await sb.auth.signInWithPassword({ email: email, password: pass }); if(signRes.error){ alert('登录仍失败：'+signRes.error.message); return; } }
+      if(signRes.error){ var ok = confirm('登录失败，是否注册并登录？'); if(!ok) return; var reg = await sb.auth.signUp({ email: email, password: pass, options:{ emailRedirectTo: window.location.origin } }); if(reg.error){ alert('注册失败：'+reg.error.message); return; } signRes = await sb.auth.signInWithPassword({ email: email, password: pass }); if(signRes.error){ alert('登录仍失败：'+signRes.error.message + '
+如果提示 Email not confirmed，请到邮箱点验证链接'); return; } }
       sessionUser = signRes.data.user; await resolveAdminByRoom(); await loadMyOrd(); updateAccountUI(); alert(isAdmin? '管理员登录成功' : '登录成功');
     });
 
@@ -427,7 +449,7 @@
     function setupRealtime(){ sb.channel('realtime:records').on('postgres_changes', { event:'*', schema:'public', table:'records', filter:'room_id=eq.'+ROOM }, function(payload){ var r = payload['new'] || payload['old']; if(!r) return; var k = r.date; ensureDay(k); var idx=r.ord-1; if(payload.eventType==='DELETE'){ state.records[k][idx] = {done:false,item:''}; } else { state.records[k][idx] = {done:!!r.done, item:r.item||''}; } saveLocal(); renderSummary(); if(k===datePick.value) renderTable(); renderWeek(); renderMonth(); }).subscribe();
       sb.channel('realtime:people').on('postgres_changes', { event:'*', schema:'public', table:'people', filter:'room_id=eq.'+ROOM }, function(){ hydrateFromCloud(); }).subscribe(); setCloudStatus(true,'在线 · 房间：'+ROOM); }
 
-    // Cloud connect
+    // Cloud connect（手动按钮仍保留，便于调试）
     connectBtn.addEventListener('click', async function(){
       ROOM = roomIdInput.value.trim(); SUPA_URL = supaUrlInput.value.trim(); SUPA_KEY = supaKeyInput.value.trim();
       localStorage.setItem('room_id', ROOM); localStorage.setItem('supa_url', SUPA_URL); localStorage.setItem('supa_key', SUPA_KEY);
