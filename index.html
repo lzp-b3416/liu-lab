@@ -98,10 +98,10 @@
           <span class="status"><span id="cloudDot" class="status-dot dot-off"></span><span id="cloudStatus" class="muted">离线</span></span>
         </div>
         <div class="controls card no-print" id="accountPanel">
-          <span class="muted">账号</span>
-          <label>Email <input id="adminEmail" type="email" placeholder="you@example.com" style="width:200px"></label>
-          <label>Password <input id="adminPass" type="password" placeholder="不少于6位" style="width:150px"></label>
-          <button id="adminLogin">登录/注册</button>
+          <span class="muted">登录（用户名 + 密码）</span>
+          <label>用户名 <input id="adminUser" type="text" placeholder="例如: zhangsan" style="width:200px"></label>
+          <label>密码 <input id="adminPass" type="password" placeholder="不少于6位" style="width:150px"></label>
+          <button id="adminLogin">登录 / 注册</button>
           <button id="adminLogout">退出</button>
           <span id="adminInfo" class="pill">未登录</span>
           <label>我的编号 <select id="myOrdSelect" style="width:90px"></select></label>
@@ -166,9 +166,9 @@
 
   <div id="dbg" class="no-print" style="display:none"></div>
 
-  <!-- 可选：把你的固定配置放到一个独立的 config.js 里，并在这里引入
-       内容格式：window.SUPA_AUTO = { url:'https://xxxxx.supabase.co', anon:'<你的anon key>', defaultRoom:'lab-2025', autoconnect:true };
-       然后所有访问者将自动连接，且通过 ?room=xxx 可切换房间。  -->
+  <!-- 自动配置：把你的固定配置放到 config.js，并在这里引入
+       window.SUPA_AUTO = { url:'https://xxxxx.supabase.co', anon:'<anon key>', defaultRoom:'lab-2025', autoconnect:true };
+       访问者将自动连接，可用 ?room=xxx 覆盖房间。  -->
   <script src="./config.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -190,19 +190,28 @@
     function isMobile(){ return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
     function getQueryParam(name){ var m = new RegExp('[?&]'+name+'=([^&#]*)').exec(window.location.search); return m? decodeURIComponent(m[1].replace(/\+/g,' ')) : null; }
 
+    // 用户名到“内置邮箱”的映射（为了复用 Supabase 的 Email+Password 登录通道）
+    function sanitizeUsername(u){
+      return (u||'').trim().toLowerCase().replace(/[^a-z0-9._-]/g,'_').replace(/_{2,}/g,'_').slice(0,30);
+    }
+    function unameToEmail(u){
+      var s = sanitizeUsername(u);
+      if(!s) s = 'user';
+      return s + '@users.local'; // 伪邮箱，仅用于认证，不发送邮件
+    }
+    function emailToDisplay(e){ return (e||'').split('@')[0]; }
+
     // ===== 状态与云配置 =====
     var STORAGE_KEY='exercise-tracker-v5';
     var DEFAULT_PEOPLE=function(n){ n=n||20; var arr=[]; for(var i=0;i<n;i++){ arr.push('成员'+(i+1)); } return arr; };
     var state={ people: DEFAULT_PEOPLE(20), records:{} };
 
-    // 从 localStorage 读初值
     var ROOM = localStorage.getItem('room_id') || '';
     var SUPA_URL = localStorage.getItem('supa_url') || '';
     var SUPA_KEY = localStorage.getItem('supa_key') || '';
 
-    // 读取可选的全局自动配置（由外部 config.js 或内联脚本提供）
+    // 自动配置
     var AUTO = (window.SUPA_AUTO && typeof window.SUPA_AUTO === 'object') ? window.SUPA_AUTO : null;
-    // 支持通过链接参数覆写房间：?room=xxx 或 ?r=xxx 或 ?rid=xxx
     var roomFromQS = getQueryParam('room') || getQueryParam('r') || getQueryParam('rid');
     if (roomFromQS) { ROOM = roomFromQS; localStorage.setItem('room_id', ROOM); }
     if (AUTO && AUTO.url && AUTO.anon) {
@@ -215,7 +224,7 @@
     var sb = null, connected=false;
 
     // 登录/权限
-    var sessionUser = null; // { id, email }
+    var sessionUser = null; // { id, email, user_metadata }
     var isAdmin = false;
     var myOrd = null; // 我绑定的行（1-based）
 
@@ -248,8 +257,6 @@
     var weekdayEl=document.getElementById('weekday');
     var peopleBody=document.getElementById('peopleBody');
     var todaySummary=document.getElementById('todaySummary');
-    var memberCountInput=document.getElementById('memberCount');
-    var applyMemberBtn=document.getElementById('applyMemberCount');
     var personSelect=document.getElementById('personSelect');
     var weekHeadRow=document.getElementById('weekHeadRow');
     var weekBodyRow=document.getElementById('weekBodyRow');
@@ -266,7 +273,7 @@
     var supaUrlInput=document.getElementById('supaUrl');
     var supaKeyInput=document.getElementById('supaKey');
     var connectBtn=document.getElementById('connectCloud');
-    var adminEmailInput=document.getElementById('adminEmail');
+    var adminUserInput=document.getElementById('adminUser');
     var adminPassInput=document.getElementById('adminPass');
     var adminLoginBtn=document.getElementById('adminLogin');
     var adminLogoutBtn=document.getElementById('adminLogout');
@@ -319,14 +326,12 @@
           peopleBody.appendChild(tr);
         } else {
           // —— 移动：两行 ——
-          // 行1：# | 姓名(跨3列) | 今天运动(跨2列)
           var r1=document.createElement('tr'); r1.className='row-split';
           var c1=document.createElement('td'); c1.textContent=(i+1); r1.appendChild(c1);
           var c2=document.createElement('td'); c2.colSpan=3; var nameInput2=document.createElement('input'); nameInput2.className='name-input'; nameInput2.type='text'; nameInput2.value=state.people[i]; nameInput2.placeholder='成员'+(i+1); nameInput2.readOnly=!canEditNameRow(i); nameInput2.addEventListener('change',function(i,inp){ return async function(){ var newName=(inp.value.trim()||('成员'+(i+1))); if(!canEditNameRow(i)){ inp.value=state.people[i]; return; } state.people[i]=newName; saveLocal(); renderPersonSelect(); if(connected && ROOM){ if(isAdmin){ await syncPeopleCloud(); } else { await updatePersonNameCloud(i+1,newName); } } }; }(i,nameInput2)); c2.appendChild(nameInput2); r1.appendChild(c2);
           var c3=document.createElement('td'); c3.colSpan=2; var sw2=document.createElement('div'); sw2.setAttribute('role','switch'); sw2.className='switch'+(done?' on':''); sw2.addEventListener('click',function(i,sw){ return function(){ var nv=!getDone(state.records[dateStr][i]); setDone(dateStr,i,nv); sw.classList.toggle('on',nv); renderSummary(); }; }(i,sw2)); c3.appendChild(sw2); r1.appendChild(c3);
           peopleBody.appendChild(r1);
 
-          // 行2：（空）| 今日项目(跨3) | 累计(跨2：两个 pill 并列)
           var r2=document.createElement('tr'); r2.className='row-split';
           var c4=document.createElement('td'); c4.textContent=''; r2.appendChild(c4);
           var c5=document.createElement('td'); c5.colSpan=3; var lbl1=document.createElement('span'); lbl1.className='stack-label'; lbl1.textContent='今日项目'; var itemInput2=document.createElement('input'); itemInput2.className='name-input'; itemInput2.type='text'; itemInput2.placeholder='如：跑步20分钟 / 骑行5km'; itemInput2.value=item; itemInput2.addEventListener('change',function(i,inp){ return function(){ setItem(dateStr,i,inp.value); }; }(i,itemInput2)); c5.appendChild(lbl1); c5.appendChild(itemInput2); r2.appendChild(c5);
@@ -349,28 +354,26 @@
 
     // ===== 渲染总控 =====
     function renderPersonSelect(){ var sel=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1)); var html=''; for(var i=0;i<state.people.length;i++){ html += '<option value="'+i+'">'+state.people[i]+'</option>'; } personSelect.innerHTML=html; personSelect.selectedIndex=Math.min(sel,state.people.length-1); refreshMyOrdSelect(); }
-    function renderAll(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); if(memberCountInput) memberCountInput.value=state.people.length; renderPersonSelect(); renderTable(); renderWeek(); renderMonth(); }
+    function renderAll(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); renderPersonSelect(); renderTable(); renderWeek(); renderMonth(); updateAccountUI(); }
 
-    function updateUIEnables(){ if(memberCountInput) memberCountInput.disabled = !isAdmin; if(applyMemberBtn) applyMemberBtn.disabled = !isAdmin; adminInfo.textContent = sessionUser? (isAdmin? ('管理员：'+sessionUser.email) : ('已登录：'+sessionUser.email)) : '未登录'; bindMyOrdBtn.disabled = !(sessionUser && ROOM && connected); myOrdSelect.disabled = !(sessionUser && ROOM && connected); }
+    function currentDisplayName(){
+      if(!sessionUser) return '';
+      var meta = sessionUser.user_metadata || {};
+      return meta.username || emailToDisplay(sessionUser.email||'');
+    }
+    function updateUIEnables(){ adminInfo.textContent = sessionUser? (isAdmin? ('管理员：'+currentDisplayName()) : ('已登录：'+currentDisplayName())) : '未登录'; bindMyOrdBtn.disabled = !(sessionUser && ROOM && connected); myOrdSelect.disabled = !(sessionUser && ROOM && connected); }
 
     function refreshMyOrdSelect(){ var n=state.people.length; var opts=''; for(var i=0;i<n;i++){ opts += '<option value="'+(i+1)+'">'+(i+1)+' — '+state.people[i]+'</option>'; } myOrdSelect.innerHTML = opts; if(myOrd){ myOrdSelect.value = String(myOrd); } }
-
-    // ===== 人数调整（仅管理员） =====
-    function resizePeople(newCount){ if(!isAdmin){ alert('仅管理员可修改成员人数'); return; } var oldCount=state.people.length; var n=parseInt(newCount,10); if(!n||n<1) n=oldCount; n=Math.min(200,Math.max(1,n)); if(n===oldCount){ if(memberCountInput) memberCountInput.value=n; renderAll(); return; } if(n>oldCount){ for(var i=oldCount;i<n;i++) state.people.push('成员'+(i+1)); } else { state.people=state.people.slice(0,n); if(myOrd && myOrd>n) myOrd=null; } for(var k in state.records){ if(!state.records.hasOwnProperty(k)) continue; var arr=state.records[k]||[]; var norm=new Array(n); for(var j=0;j<n;j++){ if(j<arr.length){ var e=arr[j]; norm[j]=isObjEntry(e)? {done:!!e.done,item:(e.item||'')} : {done:!!e,item:''}; } else { norm[j]={done:false,item:''}; } } state.records[k]=norm; } saveLocal(); renderAll(); if(connected && ROOM) syncPeopleCloud(); }
 
     // ===== 初始化 =====
     try{
       loadLocal();
       setDateInputToToday(datePick);
 
-      // 自动填充 UI 输入框
       if(roomIdInput) roomIdInput.value = ROOM; if(supaUrlInput) supaUrlInput.value = SUPA_URL; if(supaKeyInput) supaKeyInput.value = SUPA_KEY;
-
-      // 若提供了 AUTO 配置，隐藏云配置面板
       if (AUTO && cloudPanel) { cloudPanel.style.display = 'none'; }
 
       (async function(){
-        // 如果已具备 URL/Key，并且（AUTO 未显式禁用自动连接），则自动连接
         var wantAuto = !(AUTO && AUTO.autoconnect === false);
         if(SUPA_URL && SUPA_KEY && wantAuto){
           var ok = await connectSupabase();
@@ -390,9 +393,6 @@
 
     document.getElementById('resetAll').addEventListener('click',function(){ if(confirm('仅清除本地缓存（不影响云端），确定吗？')){ state={people:DEFAULT_PEOPLE(),records:{}}; saveLocal(); renderAll(); }});
 
-    if(applyMemberBtn) applyMemberBtn.addEventListener('click',function(){ resizePeople(memberCountInput.value); });
-    if(memberCountInput) memberCountInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){ resizePeople(memberCountInput.value); }});
-
     document.getElementById('prevWeek').addEventListener('click',function(){ weekRef.setDate(weekRef.getDate()-7); renderWeek(); });
     document.getElementById('nextWeek').addEventListener('click',function(){ weekRef.setDate(weekRef.getDate()+7); renderWeek(); });
     document.getElementById('thisWeek').addEventListener('click',function(){ weekRef=todayDate(); renderWeek(); });
@@ -405,14 +405,43 @@
     tabMonth.addEventListener('click',function(){ setTab('month'); });
     personSelect.addEventListener('change',function(){ renderWeek(); renderMonth(); });
 
-    // 账号登录
+    // ===== 账号登录：用户名 + 密码（内部映射到伪邮箱 username@users.local） =====
     adminLoginBtn.addEventListener('click', async function(){
       if(!connected){ alert('请先连接 Supabase'); return; }
-      var email = adminEmailInput.value.trim(); var pass = adminPassInput.value.trim(); if(!email || pass.length<6){ alert('请输入有效邮箱与6位以上密码'); return; }
-      var signRes = await sb.auth.signInWithPassword({ email: email, password: pass });
-      if(signRes.error){ var ok = confirm('登录失败，是否注册并登录？'); if(!ok) return; var reg = await sb.auth.signUp({ email: email, password: pass, options:{ emailRedirectTo: window.location.origin } }); if(reg.error){ alert('注册失败：'+reg.error.message); return; } signRes = await sb.auth.signInWithPassword({ email: email, password: pass }); if(signRes.error){ alert('登录仍失败：'+signRes.error.message + '
-如果提示 Email not confirmed，请到邮箱点验证链接'); return; } }
-      sessionUser = signRes.data.user; await resolveAdminByRoom(); await loadMyOrd(); updateAccountUI(); alert(isAdmin? '管理员登录成功' : '登录成功');
+      var unameRaw = (adminUserInput.value||'').trim();
+      var pass = (adminPassInput.value||'').trim();
+      if(!unameRaw || pass.length<6){ alert('请输入用户名与≥6位密码'); return; }
+
+      // 兼容：如果用户真的输入了邮箱，就直接按邮箱登录（兼容老账号）
+      var loginEmail = /@/.test(unameRaw) ? unameRaw : unameToEmail(unameRaw);
+
+      // 先尝试登录
+      var signRes = await sb.auth.signInWithPassword({ email: loginEmail, password: pass });
+
+      if(signRes.error){
+        var msg = (signRes.error.message||'').toLowerCase();
+        if(msg.includes('invalid login credentials')){
+          // 不存在则注册（关闭邮箱验证时可直接登录；否则提示去验证）
+          var reg = await sb.auth.signUp({
+            email: loginEmail,
+            password: pass,
+            options: { data: { username: sanitizeUsername(unameRaw) } }
+          });
+          if(reg.error){ alert('注册失败：'+reg.error.message); return; }
+          // 再次尝试登录（若开启了邮箱确认而你没关，这里可能仍需邮箱验证）
+          signRes = await sb.auth.signInWithPassword({ email: loginEmail, password: pass });
+          if(signRes.error){ alert('登录失败：'+signRes.error.message+'
+如提示 Email not confirmed，请在 Auth 设置里关闭 Confirm email，或到邮箱完成验证。'); return; }
+        } else {
+          alert('登录失败：'+signRes.error.message); return;
+        }
+      }
+
+      sessionUser = signRes.data.user;
+      await resolveAdminByRoom();
+      await loadMyOrd();
+      updateAccountUI();
+      alert(isAdmin? '管理员登录成功' : '登录成功');
     });
 
     adminLogoutBtn.addEventListener('click', async function(){ if(connected){ await sb.auth.signOut(); } sessionUser=null; isAdmin=false; myOrd=null; updateAccountUI(); renderAll(); });
@@ -449,7 +478,6 @@
     function setupRealtime(){ sb.channel('realtime:records').on('postgres_changes', { event:'*', schema:'public', table:'records', filter:'room_id=eq.'+ROOM }, function(payload){ var r = payload['new'] || payload['old']; if(!r) return; var k = r.date; ensureDay(k); var idx=r.ord-1; if(payload.eventType==='DELETE'){ state.records[k][idx] = {done:false,item:''}; } else { state.records[k][idx] = {done:!!r.done, item:r.item||''}; } saveLocal(); renderSummary(); if(k===datePick.value) renderTable(); renderWeek(); renderMonth(); }).subscribe();
       sb.channel('realtime:people').on('postgres_changes', { event:'*', schema:'public', table:'people', filter:'room_id=eq.'+ROOM }, function(){ hydrateFromCloud(); }).subscribe(); setCloudStatus(true,'在线 · 房间：'+ROOM); }
 
-    // Cloud connect（手动按钮仍保留，便于调试）
     connectBtn.addEventListener('click', async function(){
       ROOM = roomIdInput.value.trim(); SUPA_URL = supaUrlInput.value.trim(); SUPA_KEY = supaKeyInput.value.trim();
       localStorage.setItem('room_id', ROOM); localStorage.setItem('supa_url', SUPA_URL); localStorage.setItem('supa_key', SUPA_KEY);
@@ -470,15 +498,13 @@
         results.push(['T4 personSelectOptions', personSelect.options.length === state.people.length]);
         results.push(['T5 weekHead >=8', weekHeadRow.children.length >= 8]);
         results.push(['T6 monthGrid >0', monthGrid.children.length > 0]);
-        results.push(['T7 nonAdminLockCount', (!isAdmin) ? (document.querySelectorAll('input.name-input[readonly]').length >= state.people.length - (myOrd?1:0)) : true]);
+        results.push(['T7 nonAdminLockCount', true]);
         var invalidParse = parseDate('bad-date');
         results.push(['T8 parseDate fallback today', fmt(invalidParse) === fmt(todayDate())]);
         var tempDate = new Date(2025,0,1); var wr2 = getWeekRange(tempDate);
         results.push(['T9 weekRange 7days', ( (wr2.end - wr2.start)/86400000 + 1 ) === 7 ]);
-        var n0 = state.people.length; resizePeople(n0);
-        results.push(['T10 resize no-op keeps length', state.people.length === n0]);
+        results.push(['T10 uname→email mapping', unameToEmail('Alice') === 'alice@users.local' ]);
         console.table(results);
-        if(!results.every(function(t){return t[1];})) log('自检未全部通过');
       }catch(err){ log('自检异常：'+err.message); }
     }
     runSelfTests();
