@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -167,10 +166,10 @@
     const cloneDate=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
     const todayDate=()=>cloneDate(new Date());
     const isValidDateStr=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s);
-    const parseDate=s=>{if(!isValidDateStr(s))return todayDate();const [y,m,da]=s.split('-').map(Number);const d=new Date(y,m-1,da);return isNaN(d)?todayDate():cloneDate(d)};
-    const setDateInputToToday=i=>{const t=todayDate();try{if('valueAsDate'in i)i.valueAsDate=t;}catch{}i.value=fmt(t)};
+    const parseDate=s=>{if(!isValidDateStr(s))return todayDate();const [y,m,da]=s.split('-').map(Number);const d=new Date(y,m-1,da);return isNaN(d.getTime())?todayDate():cloneDate(d)};
+    const setDateInputToToday=i=>{const t=todayDate();try{if('valueAsDate'in i)i.valueAsDate=t;}catch(e){}i.value=fmt(t)};
     const getWeekRange=d=>{const diff=(d.getDay()+6)%7;const st=cloneDate(d);st.setDate(st.getDate()-diff);const ed=cloneDate(st);ed.setDate(st.getDate()+6);return{start:st,end:ed}};
-    const isMobile=()=>matchMedia&&matchMedia('(max-width:768px)').matches;
+    const isMobile=()=>window.matchMedia&&window.matchMedia('(max-width:768px)').matches;
     const qp=n=>{const m=new RegExp('[?&]'+n+'=([^&#]*)').exec(location.search);return m?decodeURIComponent(m[1].replace(/\+/g,' ')):null};
 
     // ===== 状态 =====
@@ -206,7 +205,7 @@
     const adminInfo=$('adminInfo'), adminControls=$('adminControls'), peopleCount=$('peopleCount'), applyPeopleCount=$('applyPeopleCount');
     const dbg=$('dbg'), cloudDot=$('cloudDot'), cloudStatus=$('cloudStatus'), syncLight=$('syncLight');
 
-    const log=msg=>{if(qp('debug')==='1'){dbg.style.display='block';dbg.textContent=String(msg)};try{console.warn('[debug]',msg)}catch{}}
+    const log=msg=>{if(qp('debug')==='1'){dbg.style.display='block';dbg.textContent=String(msg)};try{console.warn('[debug]',msg)}catch(e){}};
     window.addEventListener('error',e=>log('脚本错误：'+(e.message||e)));
 
     // ===== 键盘闪退修复：避免输入时整页重渲染 =====
@@ -226,7 +225,6 @@
 
     // 过滤移动端软键盘触发的 resize
     const onAnyResize=()=>{
-      // 若软键盘导致可视高度显著缩小，则跳过重渲染
       const vv=window.visualViewport;
       if(vv){ const delta = window.innerHeight - vv.height; if(delta>120){ pendingRender=true; return; } }
       if(isEditing()) { pendingRender=true; return; }
@@ -290,8 +288,8 @@
       for(let i=0;i<7;i++){const d=new Date(s);d.setDate(s.getDate()+i);hd+=`<th>${CN_WEEK[d.getDay()]}<br>${pad2(d.getMonth()+1)}-${pad2(d.getDate())}</th>`}weekHeadRow.innerHTML=hd;
       const idx=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1));const name=state.people[idx]||('成员'+(idx+1));
       let row=`<td><span class="pill">${name}</span></td>`;for(let j=0;j<7;j++){const dj=new Date(s);dj.setDate(s.getDate()+j);const k=fmt(dj);ensureDay(k);const entry=state.records[k][idx];const done=getDone(entry),note=getItem(entry);const noteHtml=note?`<span class="pill">${note.length>14?note.slice(0,14)+'…':note}</span>`:'';row+=`<td data-day="${k}" data-i="${idx}"><div class="center"><div class="switch ${done?'on':''}"></div></div><div style="margin-top:6px;">${noteHtml}</div></td>`}weekBodyRow.innerHTML=row;
-      [...weekBodyRow.querySelectorAll('td[data-day] .switch')].forEach(sw=>sw.addEventListener('click',e=>{const cell=e.currentTarget.closest('td[data-day]');const k=cell.getAttribute('data-day');const i=+cell.getAttribute('data-i');const cur=state.records[k][i];const nv=!getDone(cur);setDone(k,i,nv);e.currentTarget.classList.toggle('on',nv);renderSummary()}));
-      [...weekBodyRow.querySelectorAll('td[data-day]')].forEach(cell=>cell.addEventListener('dblclick',()=>{const k=cell.getAttribute('data-day');const i=+cell.getAttribute('data-i');const cur=getItem(state.records[k][i]);const txt=prompt(k+' 项目：',cur);if(txt!==null){setItem(k,i,txt);renderWeek()}}));
+      Array.prototype.forEach.call(weekBodyRow.querySelectorAll('td[data-day] .switch'), function(sw){ sw.addEventListener('click', function(e){ const cell=e.currentTarget.closest('td[data-day]'); const k=cell.getAttribute('data-day'); const i=+cell.getAttribute('data-i'); const cur=state.records[k][i]; const nv=!getDone(cur); setDone(k,i,nv); e.currentTarget.classList.toggle('on',nv); renderSummary(); }); });
+      Array.prototype.forEach.call(weekBodyRow.querySelectorAll('td[data-day]'), function(cell){ cell.addEventListener('dblclick', function(){ const k=cell.getAttribute('data-day'); const i=+cell.getAttribute('data-i'); const cur=getItem(state.records[k][i]); const txt=prompt(k+' 项目：',cur); if(txt!==null){ setItem(k,i,txt); renderWeek(); } }); });
     };
 
     let monthRef=todayDate();
@@ -315,14 +313,13 @@
     const setCloudStatus=(on,msg)=>{cloudDot.classList.toggle('dot-on',!!on);cloudDot.classList.toggle('dot-off',!on);cloudStatus.textContent=msg;updateSyncLight()};
     const Cloud={
       async connect(){if(!SUPA_URL||!SUPA_KEY){setCloudStatus(false,'离线（未配置）');return false}try{sb=supabase.createClient(SUPA_URL,SUPA_KEY);const probe=await sb.from('people').select('room_id',{head:true,count:'exact'}).limit(1);if(probe.error){setCloudStatus(false,'连接失败：'+probe.error.message);return false}connected=true;setCloudStatus(true,ROOM?('在线 · 房间：'+ROOM):'在线（未入房间）');return true}catch(e){setCloudStatus(false,'异常：'+e.message);return false}},
-      async hydrate(){try{const ppl=await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');const rows=ppl.data;if(rows&&rows.length){const max=Math.max(...rows.map(p=>p.ord));state.people=Array.from({length:max},(_,i)=>rows.find(p=>p.ord===i+1)?.name||('成员'+(i+1)))}else{await this.syncPeople()}const d=parseDate(datePick.value);await this.loadMonth(d.getFullYear(),d.getMonth()+1);scheduleRenderAll()}catch(e){log('hydrate异常:'+e.message)}},
+      async hydrate(){try{const ppl=await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');const rows=ppl.data;if(rows&&rows.length){const max=Math.max.apply(null, rows.map(p=>p.ord));state.people=Array.from({length:max},(_,i)=>{var f = rows.find(function(p){ return p.ord===i+1; });return (f && f.name)? f.name : ('成员'+(i+1));});}else{await this.syncPeople()}const d=parseDate(datePick.value);await this.loadMonth(d.getFullYear(),d.getMonth()+1);scheduleRenderAll()}catch(e){log('hydrate异常:'+e.message)}},
       async syncPeople(){const rows=state.people.map((n,i)=>({room_id:ROOM,ord:i+1,name:n}));const r=await sb.from('people').upsert(rows,{onConflict:'room_id,ord'});if(r.error)log('上传成员失败:'+r.error.message)},
       async applyPeopleCount(prevLen){await this.syncPeople();if(state.people.length<prevLen){const r=await sb.from('people').delete().eq('room_id',ROOM).gt('ord',state.people.length);if(r.error)log('删除多余成员失败:'+r.error.message)}},
       async updatePerson(ord,name){const r=await sb.from('people').upsert({room_id:ROOM,ord,name},{onConflict:'room_id,ord'});if(r.error)log('更名失败:'+r.error.message)},
       async loadMonth(y,m){const ym=String(m).padStart(2,'0');const from=`${y}-${ym}-01`,to=`${y}-${ym}-31`;const q=await sb.from('records').select('date,ord,done,item').eq('room_id',ROOM).gte('date',from).lte('date',to);if(q.error){log('拉取记录失败：'+q.error.message);return}const d0=new Date(y,m-1,1),last=new Date(y,m,0),by={};q.data.forEach(r=>{const k=''+r.date;const a=by[k]||[];a[r.ord-1]={done:!!r.done,item:r.item||''};by[k]=a});const cur=new Date(d0);while(cur<=last){const k=fmt(cur),n=state.people.length,arr=Array.from({length:n},()=>({done:false,item:''})),has=by[k]||[];for(let j=0;j<n;j++)if(has[j])arr[j]=has[j];state.records[k]=arr;cur.setDate(cur.getDate()+1)}saveLocal()},
       async upsertRecord(ds,idx,entry){const r=await sb.from('records').upsert({room_id:ROOM,date:ds,ord:idx+1,done:!!entry.done,item:entry.item||''},{onConflict:'room_id,date,ord'});if(r.error)log('写记录失败:'+r.error.message)},
       realtime(){sb.channel('realtime:records').on('postgres_changes',{event:'*',schema:'public',table:'records',filter:'room_id=eq.'+ROOM},payload=>{const r=payload.new||payload.old;if(!r)return;const k=r.date;ensureDay(k);const idx=r.ord-1;if(payload.eventType==='DELETE')state.records[k][idx]={done:false,item:''};else state.records[k][idx]={done:!!r.done,item:r.item||''};saveLocal();
-               // 关键：输入时不重绘，避免键盘闪退
                if(k===datePick.value){ scheduleRenderAll(); } else { if(!isEditing()) { renderWeek(); renderMonth(); } else { pendingRender=true; } }
               }).subscribe();
                sb.channel('realtime:people').on('postgres_changes',{event:'*',schema:'public',table:'people',filter:'room_id=eq.'+ROOM},()=>scheduleRenderAll()).subscribe();
