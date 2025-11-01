@@ -81,7 +81,7 @@
           <button id="connectCloud">连接</button>
           <span class="status"><span id="cloudDot" class="status-dot dot-off"></span><span id="cloudStatus" class="muted">离线</span></span>
         </div>
-        <!-- 管理员面板：仅用于“成员人数”控制，账号/密码：/ -->
+        <!-- 管理员面板：仅用于“成员人数”控制，账号/密码：liulab/liulab -->
         <div class="controls card no-print" id="adminPanel">
           <span class="muted">管理员</span>
           <label>账号 <input id="admUser" type="text" placeholder="" style="width:140px"></label>
@@ -208,6 +208,30 @@
     const log=msg=>{if(qp('debug')==='1'){dbg.style.display='block';dbg.textContent=String(msg)};try{console.warn('[debug]',msg)}catch{}}
     window.addEventListener('error',e=>log('脚本错误：'+(e.message||e)));
 
+    // ===== 键盘闪退修复：避免输入时整页重渲染 =====
+    let pendingRender=false;
+    const isEditing=()=>{
+      const a=document.activeElement;
+      return !!a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA' || a.isContentEditable);
+    };
+    const scheduleRenderAll=()=>{
+      if(isEditing()) { pendingRender=true; return; }
+      renderAll(); pendingRender=false;
+    };
+    const flushPendingAfterBlur=()=>{
+      if(!isEditing() && pendingRender){ pendingRender=false; renderAll(); }
+    };
+    document.addEventListener('focusout', ()=> setTimeout(flushPendingAfterBlur, 80));
+
+    // 过滤移动端软键盘触发的 resize
+    const onAnyResize=()=>{
+      // 若软键盘导致可视高度显著缩小，则跳过重渲染
+      const vv=window.visualViewport;
+      if(vv){ const delta = window.innerHeight - vv.height; if(delta>120){ pendingRender=true; return; } }
+      if(isEditing()) { pendingRender=true; return; }
+      renderAll();
+    };
+
     // ===== 云灯 =====
     const updateSyncLight=()=>{const on=!!connected&&!!ROOM;syncLight.classList.toggle('live-green',on);syncLight.classList.toggle('live-red',!on);syncLight.setAttribute('aria-label',on?'已开启':'未开启');syncLight.title=on?'已开启云同步（绿色）':'未开启云同步（红色）'};
 
@@ -290,14 +314,17 @@
     const setCloudStatus=(on,msg)=>{cloudDot.classList.toggle('dot-on',!!on);cloudDot.classList.toggle('dot-off',!on);cloudStatus.textContent=msg;updateSyncLight()};
     const Cloud={
       async connect(){if(!SUPA_URL||!SUPA_KEY){setCloudStatus(false,'离线（未配置）');return false}try{sb=supabase.createClient(SUPA_URL,SUPA_KEY);const probe=await sb.from('people').select('room_id',{head:true,count:'exact'}).limit(1);if(probe.error){setCloudStatus(false,'连接失败：'+probe.error.message);return false}connected=true;setCloudStatus(true,ROOM?('在线 · 房间：'+ROOM):'在线（未入房间）');return true}catch(e){setCloudStatus(false,'异常：'+e.message);return false}},
-      async hydrate(){try{const ppl=await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');const rows=ppl.data;if(rows&&rows.length){const max=Math.max(...rows.map(p=>p.ord));state.people=Array.from({length:max},(_,i)=>rows.find(p=>p.ord===i+1)?.name||('成员'+(i+1)))}else{await this.syncPeople()}const d=parseDate(datePick.value);await this.loadMonth(d.getFullYear(),d.getMonth()+1);renderAll()}catch(e){log('hydrate异常:'+e.message)}},
+      async hydrate(){try{const ppl=await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');const rows=ppl.data;if(rows&&rows.length){const max=Math.max(...rows.map(p=>p.ord));state.people=Array.from({length:max},(_,i)=>rows.find(p=>p.ord===i+1)?.name||('成员'+(i+1)))}else{await this.syncPeople()}const d=parseDate(datePick.value);await this.loadMonth(d.getFullYear(),d.getMonth()+1);scheduleRenderAll()}catch(e){log('hydrate异常:'+e.message)}},
       async syncPeople(){const rows=state.people.map((n,i)=>({room_id:ROOM,ord:i+1,name:n}));const r=await sb.from('people').upsert(rows,{onConflict:'room_id,ord'});if(r.error)log('上传成员失败:'+r.error.message)},
       async applyPeopleCount(prevLen){await this.syncPeople();if(state.people.length<prevLen){const r=await sb.from('people').delete().eq('room_id',ROOM).gt('ord',state.people.length);if(r.error)log('删除多余成员失败:'+r.error.message)}},
       async updatePerson(ord,name){const r=await sb.from('people').upsert({room_id:ROOM,ord,name},{onConflict:'room_id,ord'});if(r.error)log('更名失败:'+r.error.message)},
-      async loadMonth(y,m){const ym=String(m).padStart(2,'0');const from=`${y}-${ym}-01`,to=`${y}-${ym}-31`;const q=await sb.from('records').select('date,ord,done,item').eq('room_id',ROOM).gte('date',from).lte('date',to);if(q.error){log('拉取记录失败:'+q.error.message);return}const d0=new Date(y,m-1,1),last=new Date(y,m,0),by={};q.data.forEach(r=>{const k=''+r.date;const a=by[k]||[];a[r.ord-1]={done:!!r.done,item:r.item||''};by[k]=a});const cur=new Date(d0);while(cur<=last){const k=fmt(cur),n=state.people.length,arr=Array.from({length:n},()=>({done:false,item:''})),has=by[k]||[];for(let j=0;j<n;j++)if(has[j])arr[j]=has[j];state.records[k]=arr;cur.setDate(cur.getDate()+1)}saveLocal()},
+      async loadMonth(y,m){const ym=String(m).padStart(2,'0');const from=`${y}-${ym}-01`,to=`${y}-${ym}-31`;const q=await sb.from('records').select('date,ord,done,item').eq('room_id',ROOM).gte('date',from).lte('date',to);if(q.error){log('拉取记录失败：'+q.error.message);return}const d0=new Date(y,m-1,1),last=new Date(y,m,0),by={};q.data.forEach(r=>{const k=''+r.date;const a=by[k]||[];a[r.ord-1]={done:!!r.done,item:r.item||''};by[k]=a});const cur=new Date(d0);while(cur<=last){const k=fmt(cur),n=state.people.length,arr=Array.from({length:n},()=>({done:false,item:''})),has=by[k]||[];for(let j=0;j<n;j++)if(has[j])arr[j]=has[j];state.records[k]=arr;cur.setDate(cur.getDate()+1)}saveLocal()},
       async upsertRecord(ds,idx,entry){const r=await sb.from('records').upsert({room_id:ROOM,date:ds,ord:idx+1,done:!!entry.done,item:entry.item||''},{onConflict:'room_id,date,ord'});if(r.error)log('写记录失败:'+r.error.message)},
-      realtime(){sb.channel('realtime:records').on('postgres_changes',{event:'*',schema:'public',table:'records',filter:'room_id=eq.'+ROOM},payload=>{const r=payload.new||payload.old;if(!r)return;const k=r.date;ensureDay(k);const idx=r.ord-1;if(payload.eventType==='DELETE')state.records[k][idx]={done:false,item:''};else state.records[k][idx]={done:!!r.done,item:r.item||''};saveLocal();renderSummary();if(k===datePick.value)renderTable();renderWeek();renderMonth()}).subscribe();
-               sb.channel('realtime:people').on('postgres_changes',{event:'*',schema:'public',table:'people',filter:'room_id=eq.'+ROOM},()=>this.hydrate()).subscribe();
+      realtime(){sb.channel('realtime:records').on('postgres_changes',{event:'*',schema:'public',table:'records',filter:'room_id=eq.'+ROOM},payload=>{const r=payload.new||payload.old;if(!r)return;const k=r.date;ensureDay(k);const idx=r.ord-1;if(payload.eventType==='DELETE')state.records[k][idx]={done:false,item:''};else state.records[k][idx]={done:!!r.done,item:r.item||''};saveLocal();
+               // 关键：输入时不重绘，避免键盘闪退
+               if(k===datePick.value){ scheduleRenderAll(); } else { if(!isEditing()) { renderWeek(); renderMonth(); } else { pendingRender=true; } }
+              }).subscribe();
+               sb.channel('realtime:people').on('postgres_changes',{event:'*',schema:'public',table:'people',filter:'room_id=eq.'+ROOM},()=>scheduleRenderAll()).subscribe();
                setCloudStatus(true,'在线 · 房间：'+ROOM)}
     };
 
@@ -311,12 +338,15 @@
       renderAll();
     }catch(e){log('初始化异常：'+e.message)}
 
-    // ===== 事件绑定 =====
-    addEventListener('resize',()=>renderAll());
-    $('prevDay').addEventListener('click',()=>{const d=parseDate(datePick.value);d.setDate(d.getDate()-1);datePick.value=fmt(d);renderAll()});
-    $('nextDay').addEventListener('click',()=>{const d=parseDate(datePick.value);d.setDate(d.getDate()+1);datePick.value=fmt(d);renderAll()});
-    $('goToday').addEventListener('click',()=>{setDateInputToToday(datePick);renderAll()});
-    datePick.addEventListener('change',()=>{if(!isValidDateStr(datePick.value))setDateInputToToday(datePick);renderAll()});
+    // ===== 事件绑定（已防抖动输入） =====
+    window.addEventListener('resize', onAnyResize);
+    if(window.visualViewport){ window.visualViewport.addEventListener('resize', onAnyResize); }
+    window.addEventListener('orientationchange', ()=> setTimeout(scheduleRenderAll, 300));
+
+    $('prevDay').addEventListener('click',()=>{const d=parseDate(datePick.value);d.setDate(d.getDate()-1);datePick.value=fmt(d);scheduleRenderAll()});
+    $('nextDay').addEventListener('click',()=>{const d=parseDate(datePick.value);d.setDate(d.getDate()+1);datePick.value=fmt(d);scheduleRenderAll()});
+    $('goToday').addEventListener('click',()=>{setDateInputToToday(datePick);scheduleRenderAll()});
+    datePick.addEventListener('change',()=>{if(!isValidDateStr(datePick.value))setDateInputToToday(datePick);scheduleRenderAll()});
 
     $('prevWeek').addEventListener('click',()=>{weekRef.setDate(weekRef.getDate()-7);renderWeek()});
     $('nextWeek').addEventListener('click',()=>{weekRef.setDate(weekRef.getDate()+7);renderWeek()});
@@ -342,7 +372,7 @@
       if(n===prev){alert('人数未变化');return}
       const old=state.people.slice();
       const list=Array.from({length:n},(_,i)=> old[i] || ('成员'+(i+1)) );
-      state.people=list; saveLocal(); renderAll();
+      state.people=list; saveLocal(); scheduleRenderAll();
       if(connected&&ROOM){ await Cloud.applyPeopleCount(prev); }
       alert('成员人数已更新为 '+n+' 人');
     });
