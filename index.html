@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>每日运动打卡 · 精简版</title>
+  <title>每日运动打卡 · 精简版（访客可编辑 + 管理员人数控制）</title>
   <style>
-    :root{--bg:#0b1220;--panel:#111a2b;--muted:#7f8ca6;--text:#ecf2ff;--accent:#4da3ff;--ok:#15c27b;--border:#20304d}
+    :root{--bg:#0b1220;--panel:#111a2b;--muted:#7f8ca6;--text:#ecf2ff;--accent:#4da3ff;--ok:#15c27b;--warn:#ff8370;--border:#20304d}
     *{box-sizing:border-box}html,body{height:100%}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC",Helvetica,Arial,"Microsoft Yahei",sans-serif}
     header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,#0b1220,rgba(11,18,32,.85));backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
     .wrap{max-width:1200px;margin:0 auto;padding:16px}
@@ -16,7 +16,7 @@
     .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px}
     .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     button,select,input,label.btnlike{background:#0f1730;color:var(--text);border:1px solid var(--border);padding:8px 10px;border-radius:10px;cursor:pointer}
-    input[type="text"],input[type="date"],input[type="password"]{cursor:text}
+    input[type="text"],input[type="date"],input[type="password"],input[type="number"]{cursor:text}
     .pill{padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:#0f1730;color:var(--muted);font-size:12px}
     .table{width:100%;border-collapse:collapse}
     .table th,.table td{padding:10px;border-bottom:1px dashed var(--border);vertical-align:middle}
@@ -45,13 +45,12 @@
     .week-table th,.week-table td{padding:10px;border-bottom:1px dashed var(--border);text-align:center}
     .footer{color:var(--muted);font-size:12px;margin-top:24px}
     .status{display:inline-flex;gap:6px;align-items:center}.status-dot{width:8px;height:8px;border-radius:50%}.dot-off{background:#6b7280}.dot-on{background:#10b981}
-
-    /* 新增：全局云同步指示灯 */
+    /* 云同步指示灯 */
     .live-wrap{display:inline-flex;align-items:center;gap:6px}
     .live-light{width:12px;height:12px;border-radius:999px;border:1px solid var(--border);box-shadow:0 0 6px currentColor}
     .live-green{background:#10b981;color:#10b981}
     .live-red{background:#ef4444;color:#ef4444}
-
+    /* 移动端：表格两行布局 */
     @media (max-width:768px){#peopleTable thead{display:none}.table td{padding:8px 6px}.stack-label{display:inline-block;color:var(--muted);font-size:12px;margin-right:6px}.row-split + .row-split td{border-top:none}}
   </style>
 </head>
@@ -60,13 +59,9 @@
     <div class="wrap">
       <div class="title">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 2v2M16 2v2M3 9h18M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#9fb4ff" stroke-width="1.3" stroke-linecap="round"/></svg>
-        <h1>每日运动打卡（精简版）</h1>
-        <span class="muted">支持多人实时；管理员可增删成员；普通用户可改自己姓名</span>
-        <!-- 新增：全局指示灯（绿色=已实现云同步；红色=未实现） -->
-        <span class="live-wrap" title="云同步状态">
-          <span class="muted">云同步</span>
-          <span id="syncLight" class="live-light live-red" aria-label="未开启"></span>
-        </span>
+        <h1>每日运动打卡（访客可编辑 · 管理员控制人数）</h1>
+        <span class="muted">无需登录：任何人可改姓名/今日运动/项目；管理员可改成员人数</span>
+        <span class="live-wrap" title="云同步状态"><span class="muted">云同步</span><span id="syncLight" class="live-light live-red" aria-label="未开启"></span></span>
       </div>
       <div class="bar">
         <div class="controls card">
@@ -79,22 +74,25 @@
           <span id="todaySummary" class="pill"></span>
         </div>
         <div class="controls card no-print" id="cloudPanel">
-          <span class="muted">云同步</span>
+          <span class="muted">云同步（Supabase）</span>
           <label>房间 <input id="roomIdInput" type="text" placeholder="lab-2025" style="width:120px"></label>
           <label>URL <input id="supaUrl" type="text" placeholder="https://xxx.supabase.co" style="width:220px"></label>
           <label>Anon <input id="supaKey" type="password" placeholder="匿名密钥" style="width:220px"></label>
           <button id="connectCloud">连接</button>
           <span class="status"><span id="cloudDot" class="status-dot dot-off"></span><span id="cloudStatus" class="muted">离线</span></span>
         </div>
-        <div class="controls card no-print" id="accountPanel">
-          <span class="muted">登录（用户名 + 密码）</span>
-          <label>用户名 <input id="adminUser" type="text" placeholder="如 zhangsan" style="width:180px"></label>
-          <label>密码 <input id="adminPass" type="password" placeholder="≥6位" style="width:120px"></label>
-          <button id="adminLogin">登录/注册</button>
-          <button id="adminLogout">退出</button>
-          <span id="adminInfo" class="pill">未登录</span>
-          <label>我的编号 <select id="myOrdSelect" style="width:90px"></select></label>
-          <button id="bindMyOrd">绑定</button>
+        <!-- 管理员面板：仅用于“成员人数”控制，账号/密码：liulab/liulab -->
+        <div class="controls card no-print" id="adminPanel">
+          <span class="muted">管理员</span>
+          <label>账号 <input id="admUser" type="text" placeholder="liulab" style="width:140px"></label>
+          <label>密码 <input id="admPass" type="password" placeholder="liulab" style="width:140px"></label>
+          <button id="admLogin">登录</button>
+          <button id="admLogout">退出</button>
+          <span id="adminInfo" class="pill">访客模式</span>
+          <span id="adminControls" style="display:none;gap:8px;align-items:center" class="controls">
+            <label>成员人数 <input id="peopleCount" type="number" min="1" max="200" value="29" style="width:90px"></label>
+            <button id="applyPeopleCount">应用</button>
+          </span>
         </div>
       </div>
     </div>
@@ -148,19 +146,19 @@
       <div id="monthView" style="display:none"><div class="calendar-grid" id="monthGrid"></div></div>
     </section>
 
-    <p class="footer">默认本地 LocalStorage；配置 Supabase + 房间码后可多人实时。管理员可增删成员；普通用户登录并绑定“我的编号”后，只能改自己的姓名。</p>
+    <p class="footer">访客模式：任何人可编辑姓名/今日运动/项目；开启云同步后，所有人实时看到彼此改动。管理员（liulab/liulab）可修改成员人数（默认 29 人）。</p>
   </main>
 
   <div id="dbg" class="no-print" style="display:none"></div>
 
-  <!-- （可选）在独立文件放固定配置：window.SUPA_AUTO = { url:'https://xxxx.supabase.co', anon:'<anon>', defaultRoom:'lab-2025', autoconnect:true } -->
   <script src="./config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
   (()=>{
     'use strict';
 
-    // ===== 简易工具 =====
+    // ===== 工具与常量 =====
+    const DEFAULT_COUNT = 29; // 初始成员人数
     const pad2=n=>String(n).padStart(2,'0');
     const fmt=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
     const CN_WEEK=['周日','周一','周二','周三','周四','周五','周六'];
@@ -174,23 +172,10 @@
     const isMobile=()=>matchMedia&&matchMedia('(max-width:768px)').matches;
     const qp=n=>{const m=new RegExp('[?&]'+n+'=([^&#]*)').exec(location.search);return m?decodeURIComponent(m[1].replace(/\+/g,' ')):null};
 
-    // ===== 错误归一化（认证相关） =====
-    const normAuth=msg=>{const s=(msg||'').toLowerCase();
-      if(s.includes('email logins are disabled'))return'email_disabled';
-      if(s.includes('email not confirmed'))return'email_not_confirmed';
-      if(s.includes('invalid login credentials'))return'invalid_credentials';
-      if(s.includes('signups not allowed')||s.includes('signup is disabled'))return'signup_disabled';
-      return'other'};
-
-    // ===== 用户名映射到伪邮箱 =====
-    const sanitize=u=>(u||'').trim().toLowerCase().replace(/[^a-z0-9._-]/g,'_').replace(/_{2,}/g,'_').slice(0,30);
-    const uname2mail=u=>{let s=sanitize(u);if(!s)s='user';return s+'@users.local'};
-    const mail2disp=e=>(e||'').split('@')[0];
-
     // ===== 状态 =====
-    const STORAGE_KEY='exercise-tracker-v6-lite';
-    const DEFAULT_PEOPLE=n=>Array.from({length:n||20},(_,i)=>'成员'+(i+1));
-    let state={people:DEFAULT_PEOPLE(20),records:{}};
+    const STORAGE_KEY='exercise-tracker-v7-guest-admin';
+    const DEFAULT_PEOPLE=n=>Array.from({length:n||DEFAULT_COUNT},(_,i)=>'成员'+(i+1));
+    let state={people:DEFAULT_PEOPLE(DEFAULT_COUNT),records:{}};
 
     let ROOM=localStorage.getItem('room_id')||'';
     let SUPA_URL=localStorage.getItem('supa_url')||'';
@@ -202,10 +187,10 @@
     if(AUTO&&AUTO.url&&AUTO.anon){SUPA_URL=AUTO.url;SUPA_KEY=AUTO.anon;localStorage.setItem('supa_url',SUPA_URL);localStorage.setItem('supa_key',SUPA_KEY);if(!ROOM&&AUTO.defaultRoom){ROOM=AUTO.defaultRoom;localStorage.setItem('room_id',ROOM)}}
 
     let sb=null, connected=false;
-    let sessionUser=null; let isAdmin=false; let myOrd=null;
+    let isAdmin=false; // 仅前端门禁：liulab/liulab
 
     // ===== 本地存取 =====
-    const loadLocal=()=>{try{const raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem('exercise-tracker-v5');if(raw){const o=JSON.parse(raw);if(Array.isArray(o.people)&&o.people.length)state.people=o.people;if(o.records&&typeof o.records==='object')state.records=o.records}}catch(e){log('加载失败:'+e.message)}};
+    const loadLocal=()=>{try{const raw=localStorage.getItem(STORAGE_KEY)||localStorage.getItem('exercise-tracker-v6-lite');if(raw){const o=JSON.parse(raw);if(Array.isArray(o.people)&&o.people.length)state.people=o.people;if(o.records&&typeof o.records==='object')state.records=o.records}}catch(e){log('加载失败:'+e.message)}};
     const saveLocal=()=>localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 
     // ===== DOM =====
@@ -214,25 +199,19 @@
     const personSelect=$('personSelect'), weekHeadRow=$('weekHeadRow'), weekBodyRow=$('weekBodyRow'), weekRangeEl=$('weekRange');
     const monthGrid=$('monthGrid'), monthLabel=$('monthLabel');
     const tabWeek=$('tabWeek'), tabMonth=$('tabMonth'), weekView=$('weekView'), monthView=$('monthView'), weekNav=$('weekNav'), monthNav=$('monthNav');
-    const roomIdInput=$('roomIdInput'), supaUrlInput=$('supaUrl'), supaKeyInput=$('supaKey'), connectBtn=$('connectCloud');
-    const adminUserInput=$('adminUser'), adminPassInput=$('adminPass'), adminLoginBtn=$('adminLogin'), adminLogoutBtn=$('adminLogout');
-    const adminInfo=$('adminInfo'), myOrdSelect=$('myOrdSelect'), bindMyOrdBtn=$('bindMyOrd');
+    const roomIdInput=$('roomIdInput'), supaUrlInput=$('supaUrl'), supaKeyInput=$('supaKey');
+    const connectBtn=$('connectCloud');
+    const admUser=$('admUser'), admPass=$('admPass'), admLogin=$('admLogin'), admLogout=$('admLogout');
+    const adminInfo=$('adminInfo'), adminControls=$('adminControls'), peopleCount=$('peopleCount'), applyPeopleCount=$('applyPeopleCount');
     const dbg=$('dbg'), cloudDot=$('cloudDot'), cloudStatus=$('cloudStatus'), syncLight=$('syncLight');
 
     const log=msg=>{if(qp('debug')==='1'){dbg.style.display='block';dbg.textContent=String(msg)};try{console.warn('[debug]',msg)}catch{}}
     window.addEventListener('error',e=>log('脚本错误：'+(e.message||e)));
 
-    // ===== 指示灯 =====
-    const updateSyncLight=()=>{
-      if(!syncLight) return;
-      const on = !!connected && !!ROOM;
-      syncLight.classList.toggle('live-green', on);
-      syncLight.classList.toggle('live-red', !on);
-      syncLight.setAttribute('aria-label', on ? '已开启' : '未开启');
-      syncLight.title = on ? '已开启云同步（绿色）' : '未开启云同步（红色）';
-    };
+    // ===== 云灯 =====
+    const updateSyncLight=()=>{const on=!!connected&&!!ROOM;syncLight.classList.toggle('live-green',on);syncLight.classList.toggle('live-red',!on);syncLight.setAttribute('aria-label',on?'已开启':'未开启');syncLight.title=on?'已开启云同步（绿色）':'未开启云同步（红色）'};
 
-    // ===== 记录结构 =====
+    // ===== 数据结构 =====
     const isEntry=e=>!!e&&typeof e==='object'&&('done'in e||'item'in e);
     const getDone=e=>isEntry(e)?!!e.done:!!e;
     const getItem=e=>isEntry(e)?(e.item||''):'';
@@ -241,8 +220,8 @@
     const setItem=(ds,i,t)=>{ensureDay(ds);state.records[ds][i].item=String(t||'');saveLocal();if(connected&&ROOM)Cloud.upsertRecord(ds,i,state.records[ds][i])};
     const rangeCount=(i,st,ed)=>{let c=0,d=cloneDate(st);while(d<=ed){const k=fmt(d),a=state.records[k];if(a&&a[i]&&getDone(a[i]))c++;d.setDate(d.getDate()+1)}return c};
 
-    // ===== 权限 =====
-    const canEditName=i=>isAdmin||(sessionUser&&myOrd===i+1);
+    // ===== 任何人都可改姓名 =====
+    const canEditName=()=>true;
 
     // ===== 渲染 =====
     const renderSummary=()=>{const ds=isValidDateStr(datePick.value)?datePick.value:fmt(todayDate());const arr=state.records[ds]||[];const done=arr.filter(e=>getDone(e)).length;todaySummary.innerHTML=`本日完成：<b style="color:${getComputedStyle(document.documentElement).getPropertyValue('--ok')}">${done}</b> / ${state.people.length}`};
@@ -262,7 +241,7 @@
         if(!mobile){
           const tr=document.createElement('tr');
           tr.innerHTML=`<td>${i+1}</td><td></td><td class="center"></td><td></td><td class="right"></td><td class="right"></td>`;
-          const nameInp=document.createElement('input');nameInp.className='name-input';nameInp.value=state.people[i];nameInp.placeholder='成员'+(i+1);nameInp.readOnly=!canEditName(i);nameInp.addEventListener('change',async()=>{const nv=(nameInp.value.trim()||('成员'+(i+1)));if(!canEditName(i)){nameInp.value=state.people[i];return}state.people[i]=nv;saveLocal();renderPersonSelect();if(connected&&ROOM){if(isAdmin){await Cloud.syncPeople()}else{await Cloud.updatePerson(i+1,nv)}}});tr.children[1].appendChild(nameInp);
+          const nameInp=document.createElement('input');nameInp.className='name-input';nameInp.value=state.people[i];nameInp.placeholder='成员'+(i+1);nameInp.readOnly=!canEditName(i);nameInp.addEventListener('change',async()=>{const nv=(nameInp.value.trim()||('成员'+(i+1)));state.people[i]=nv;saveLocal();renderPersonSelect();if(connected&&ROOM){await Cloud.updatePerson(i+1,nv)}});tr.children[1].appendChild(nameInp);
           tr.children[2].appendChild(buildSwitch(done,nv=>setDone(ds,i,nv)));
           const itemInp=document.createElement('input');itemInp.className='name-input';itemInp.placeholder='如 跑步20分钟';itemInp.value=item;itemInp.addEventListener('change',()=>setItem(ds,i,itemInp.value));tr.children[3].appendChild(itemInp);
           tr.children[4].innerHTML=`<span class="pill">周 ${wCnt} 次</span>`;
@@ -270,7 +249,7 @@
           peopleBody.appendChild(tr);
         }else{
           const r1=document.createElement('tr');r1.className='row-split';r1.innerHTML=`<td>${i+1}</td><td colspan="3"></td><td colspan="2" class="center"></td>`;
-          const name2=document.createElement('input');name2.className='name-input';name2.value=state.people[i];name2.placeholder='成员'+(i+1);name2.readOnly=!canEditName(i);name2.addEventListener('change',async()=>{const nv=(name2.value.trim()||('成员'+(i+1)));if(!canEditName(i)){name2.value=state.people[i];return}state.people[i]=nv;saveLocal();renderPersonSelect();if(connected&&ROOM){if(isAdmin){await Cloud.syncPeople()}else{await Cloud.updatePerson(i+1,nv)}}});r1.children[1].appendChild(name2);r1.children[2].appendChild(buildSwitch(done,nv=>setDone(ds,i,nv)));peopleBody.appendChild(r1);
+          const name2=document.createElement('input');name2.className='name-input';name2.value=state.people[i];name2.placeholder='成员'+(i+1);name2.readOnly=!canEditName(i);name2.addEventListener('change',async()=>{const nv=(name2.value.trim()||('成员'+(i+1)));state.people[i]=nv;saveLocal();renderPersonSelect();if(connected&&ROOM){await Cloud.updatePerson(i+1,nv)}});r1.children[1].appendChild(name2);r1.children[2].appendChild(buildSwitch(done,nv=>setDone(ds,i,nv)));peopleBody.appendChild(r1);
           const r2=document.createElement('tr');r2.className='row-split';r2.innerHTML=`<td></td><td colspan="3"></td><td colspan="2"></td>`;
           const tag=document.createElement('span');tag.className='stack-label';tag.textContent='今日项目';const inp=document.createElement('input');inp.className='name-input';inp.placeholder='如 跑步20分钟';inp.value=item;inp.addEventListener('change',()=>setItem(ds,i,inp.value));r2.children[1].appendChild(tag);r2.children[1].appendChild(inp);
           const lbl=document.createElement('span');lbl.className='stack-label';lbl.textContent='累计';const pW=document.createElement('span');pW.className='pill';pW.textContent=`周 ${wCnt} 次`;const pM=document.createElement('span');pM.className='pill';pM.textContent=`月 ${mCnt} 次`;r2.children[2].appendChild(lbl);r2.children[2].appendChild(pW);r2.children[2].appendChild(pM);
@@ -278,7 +257,7 @@
         }
       }
       todaySummary.innerHTML=`本日完成：<b style="color:${getComputedStyle(document.documentElement).getPropertyValue('--ok')}">${doneCount}</b> / ${state.people.length}`;
-      updateAccountUI();
+      updateAdminUI();
     };
 
     let weekRef=todayDate();
@@ -302,21 +281,18 @@
         }else{cell.style.visibility='hidden'}monthGrid.appendChild(cell)}
     };
 
-    const renderPersonSelect=()=>{const sel=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1));personSelect.innerHTML=state.people.map((n,i)=>`<option value="${i}">${n}</option>`).join('');personSelect.selectedIndex=Math.min(sel,state.people.length-1);refreshMyOrdSelect()};
-    const renderAll=()=>{if(!isValidDateStr(datePick.value))setDateInputToToday(datePick);renderPersonSelect();renderTable();renderWeek();renderMonth();updateAccountUI()};
+    const renderPersonSelect=()=>{const sel=Math.max(0,Math.min(personSelect.selectedIndex,state.people.length-1));personSelect.innerHTML=state.people.map((n,i)=>`<option value="${i}">${n}</option>`).join('');personSelect.selectedIndex=Math.min(sel,state.people.length-1)};
+    const renderAll=()=>{if(!isValidDateStr(datePick.value))setDateInputToToday(datePick);renderPersonSelect();renderTable();renderWeek();renderMonth();updateAdminUI()};
 
-    const currentName=()=>{if(!sessionUser)return'';const meta=sessionUser.user_metadata||{};return meta.username||mail2disp(sessionUser.email||'')};
-    const updateUIEnables=()=>{adminInfo.textContent=sessionUser?(isAdmin?('管理员：'+currentName()):('已登录：'+currentName())):'未登录';bindMyOrdBtn.disabled=!(sessionUser&&ROOM&&connected);myOrdSelect.disabled=!(sessionUser&&ROOM&&connected)};
-    const refreshMyOrdSelect=()=>{myOrdSelect.innerHTML=state.people.map((n,i)=>`<option value="${i+1}">${i+1} — ${n}</option>`).join('');if(myOrd)myOrdSelect.value=String(myOrd)};
+    const updateAdminUI=()=>{adminInfo.textContent=isAdmin?'管理员模式':'访客模式';adminControls.style.display=isAdmin?'inline-flex':'none';if(isAdmin){peopleCount.value=String(state.people.length)}};
 
     // ===== 云端（封装） =====
     const setCloudStatus=(on,msg)=>{cloudDot.classList.toggle('dot-on',!!on);cloudDot.classList.toggle('dot-off',!on);cloudStatus.textContent=msg;updateSyncLight()};
     const Cloud={
-      async connect(){if(!SUPA_URL||!SUPA_KEY){setCloudStatus(false,'离线（未配置）');return false}try{sb=supabase.createClient(SUPA_URL,SUPA_KEY);const probe=await sb.from('people').select('room_id',{head:true,count:'exact'}).limit(1);if(probe.error){setCloudStatus(false,'连接失败：'+probe.error.message);return false}connected=true;setCloudStatus(true,ROOM?('在线 · 房间：'+ROOM):'在线（未入房间）');const s=await sb.auth.getSession();sessionUser=s?.data?.session?.user||null;await this.resolveAdmin();await this.loadMyOrd();updateAccountUI();return true}catch(e){setCloudStatus(false,'异常：'+e.message);return false}},
-      async resolveAdmin(){if(!connected||!ROOM){isAdmin=false;return}try{const q=await sb.from('rooms').select('admin_uid').eq('room_id',ROOM).maybeSingle();if(q.error&&q.error.code!=='PGRST116'){log('房间查询失败:'+q.error.message);isAdmin=false;return}if(!q.data){if(sessionUser){await sb.from('rooms').insert({room_id:ROOM,admin_uid:sessionUser.id});isAdmin=true}else isAdmin=false}else isAdmin=!!sessionUser&&q.data.admin_uid===sessionUser.id}catch(e){log('resolveAdmin异常:'+e.message);isAdmin=false}},
-      async loadMyOrd(){if(!connected||!ROOM||!sessionUser){myOrd=null;return}const q=await sb.from('members').select('ord').eq('room_id',ROOM).eq('uid',sessionUser.id).maybeSingle();if(q.error&&q.error.code!=='PGRST116')log('查我的编号失败:'+q.error.message);myOrd=q.data?.ord||null},
-      async hydrate(){try{const ppl=await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');const rows=ppl.data;if(rows?.length){const max=Math.max(...rows.map(p=>p.ord));state.people=Array.from({length:max},(_,i)=>rows.find(p=>p.ord===i+1)?.name||('成员'+(i+1)))}else{await this.syncPeople()}const d=parseDate(datePick.value);await this.loadMonth(d.getFullYear(),d.getMonth()+1);renderAll()}catch(e){log('hydrate异常:'+e.message)}},
+      async connect(){if(!SUPA_URL||!SUPA_KEY){setCloudStatus(false,'离线（未配置）');return false}try{sb=supabase.createClient(SUPA_URL,SUPA_KEY);const probe=await sb.from('people').select('room_id',{head:true,count:'exact'}).limit(1);if(probe.error){setCloudStatus(false,'连接失败：'+probe.error.message);return false}connected=true;setCloudStatus(true,ROOM?('在线 · 房间：'+ROOM):'在线（未入房间）');return true}catch(e){setCloudStatus(false,'异常：'+e.message);return false}},
+      async hydrate(){try{const ppl=await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');const rows=ppl.data;if(rows&&rows.length){const max=Math.max(...rows.map(p=>p.ord));state.people=Array.from({length:max},(_,i)=>rows.find(p=>p.ord===i+1)?.name||('成员'+(i+1)))}else{await this.syncPeople()}const d=parseDate(datePick.value);await this.loadMonth(d.getFullYear(),d.getMonth()+1);renderAll()}catch(e){log('hydrate异常:'+e.message)}},
       async syncPeople(){const rows=state.people.map((n,i)=>({room_id:ROOM,ord:i+1,name:n}));const r=await sb.from('people').upsert(rows,{onConflict:'room_id,ord'});if(r.error)log('上传成员失败:'+r.error.message)},
+      async applyPeopleCount(prevLen){await this.syncPeople();if(state.people.length<prevLen){const r=await sb.from('people').delete().eq('room_id',ROOM).gt('ord',state.people.length);if(r.error)log('删除多余成员失败:'+r.error.message)}},
       async updatePerson(ord,name){const r=await sb.from('people').upsert({room_id:ROOM,ord,name},{onConflict:'room_id,ord'});if(r.error)log('更名失败:'+r.error.message)},
       async loadMonth(y,m){const ym=String(m).padStart(2,'0');const from=`${y}-${ym}-01`,to=`${y}-${ym}-31`;const q=await sb.from('records').select('date,ord,done,item').eq('room_id',ROOM).gte('date',from).lte('date',to);if(q.error){log('拉取记录失败:'+q.error.message);return}const d0=new Date(y,m-1,1),last=new Date(y,m,0),by={};q.data.forEach(r=>{const k=''+r.date;const a=by[k]||[];a[r.ord-1]={done:!!r.done,item:r.item||''};by[k]=a});const cur=new Date(d0);while(cur<=last){const k=fmt(cur),n=state.people.length,arr=Array.from({length:n},()=>({done:false,item:''})),has=by[k]||[];for(let j=0;j<n;j++)if(has[j])arr[j]=has[j];state.records[k]=arr;cur.setDate(cur.getDate()+1)}saveLocal()},
       async upsertRecord(ds,idx,entry){const r=await sb.from('records').upsert({room_id:ROOM,date:ds,ord:idx+1,done:!!entry.done,item:entry.item||''},{onConflict:'room_id,date,ord'});if(r.error)log('写记录失败:'+r.error.message)},
@@ -330,7 +306,7 @@
       loadLocal(); setDateInputToToday(datePick);
       if(roomIdInput)roomIdInput.value=ROOM; if(supaUrlInput)supaUrlInput.value=SUPA_URL; if(supaKeyInput)supaKeyInput.value=SUPA_KEY;
       if(AUTO&&$('cloudPanel')) $('cloudPanel').style.display='none';
-      updateSyncLight(); // 初始：未连接或未入房间 → 红色
+      updateSyncLight();
       (async()=>{const want=!(AUTO&&AUTO.autoconnect===false); if(SUPA_URL&&SUPA_KEY&&want){const ok=await Cloud.connect(); if(ok&&ROOM){await Cloud.hydrate(); Cloud.realtime();}}})();
       renderAll();
     }catch(e){log('初始化异常：'+e.message)}
@@ -354,47 +330,25 @@
     tabMonth.addEventListener('click',()=>setTab('month'));
     personSelect.addEventListener('change',()=>{renderWeek();renderMonth()});
 
-    // 登录：用户名+密码（映射到 username@users.local）
-    $('adminLogin').addEventListener('click',async()=>{
-      if(!connected){alert('请先连接 Supabase');return}
-      const u=(adminUserInput.value||'').trim(); const p=(adminPassInput.value||'').trim(); if(!u||p.length<6){alert('请输入用户名与≥6位密码');return}
-      const email=/@/.test(u)?u:uname2mail(u);
-      let r=await sb.auth.signInWithPassword({email,password:p});
-      if(r.error){
-        const code=normAuth(r.error.message);
-        if(code==='invalid_credentials'){
-          const reg=await sb.auth.signUp({email,password:p,options:{data:{username:sanitize(u)}}});
-          if(reg.error){
-            const c2=normAuth(reg.error.message);
-            if(c2==='email_disabled'){alert('后端未开启 Email Provider。\nAuth → Providers → Email → Enable Email Provider');return}
-            if(c2==='signup_disabled'){alert('已禁用注册（Signups disabled）');return}
-            alert('注册失败：'+reg.error.message);return
-          }
-          r=await sb.auth.signInWithPassword({email,password:p});
-          if(r.error){
-            const c3=normAuth(r.error.message);
-            if(c3==='email_not_confirmed'){alert('Email 未验证。\n可在 Auth → Providers → Email 关闭 Confirm email 或前往邮箱验证');return}
-            alert('登录失败：'+r.error.message);return
-          }
-        } else if(code==='email_disabled'){
-          alert('后端未开启 Email Provider。\n请到 Auth → Providers → Email 启用');
-          return;
-        } else {
-          alert('登录失败：'+r.error.message);
-          return;
-        }
-      }
-      sessionUser=r.data.user; await Cloud.resolveAdmin(); await Cloud.loadMyOrd(); updateAccountUI(); alert(isAdmin?'管理员登录成功':'登录成功')
+    // 管理员登录（前端简单门禁）
+    admLogin.addEventListener('click',()=>{const u=(admUser.value||'').trim();const p=(admPass.value||'').trim();if(u==='liulab'&&p==='liulab'){isAdmin=true;updateAdminUI();alert('管理员登录成功');}else{alert('账号或密码错误')}});
+    admLogout.addEventListener('click',()=>{isAdmin=false;updateAdminUI();});
+
+    // 管理员设置人数
+    applyPeopleCount.addEventListener('click',async()=>{
+      if(!isAdmin){alert('请先以管理员登录');return}
+      let n=parseInt(peopleCount.value,10); if(!Number.isFinite(n)||n<1){alert('人数必须是正整数');return}
+      const prev=state.people.length;
+      if(n===prev){alert('人数未变化');return}
+      const old=state.people.slice();
+      const list=Array.from({length:n},(_,i)=> old[i] || ('成员'+(i+1)) );
+      state.people=list; saveLocal(); renderAll();
+      if(connected&&ROOM){ await Cloud.applyPeopleCount(prev); }
+      alert('成员人数已更新为 '+n+' 人');
     });
 
-    $('adminLogout').addEventListener('click',async()=>{if(connected)await sb.auth.signOut(); sessionUser=null; isAdmin=false; myOrd=null; updateAccountUI(); renderAll(); updateSyncLight()});
-
-    $('bindMyOrd').addEventListener('click',async()=>{if(!sessionUser||!ROOM||!connected){alert('请先连接并登录');return}const ord=parseInt(myOrdSelect.value,10);const up=await sb.from('members').upsert({room_id:ROOM,uid:sessionUser.id,ord},{onConflict:'room_id,uid'});if(up.error){alert('绑定失败：'+up.error.message);return}myOrd=ord;updateAccountUI();renderAll();alert('已绑定到第 '+ord+' 行')});
-
-    $('connectCloud').addEventListener('click',async()=>{ROOM=roomIdInput.value.trim();SUPA_URL=supaUrlInput.value.trim();SUPA_KEY=supaKeyInput.value.trim();localStorage.setItem('room_id',ROOM);localStorage.setItem('supa_url',SUPA_URL);localStorage.setItem('supa_key',SUPA_KEY);const ok=await Cloud.connect();if(ok){if(ROOM){await Cloud.hydrate();Cloud.realtime();await Cloud.resolveAdmin();await Cloud.loadMyOrd();updateAccountUI()}else alert('已连接 Supabase，但未填写房间码')}});
-
-    // ===== 自检（精简） =====
-    (function tests(){try{const res=[];res.push(['T1 date valid',isValidDateStr(datePick.value)]);const ds=fmt(todayDate());ensureDay(ds);const b=!!state.records[ds][0].done;setDone(ds,0,!b);const a=!!state.records[ds][0].done;setDone(ds,0,b);res.push(['T2 toggle ok',a===!b]);res.push(['T3 select count',personSelect.options.length===state.people.length]);res.push(['T4 month grid',monthGrid.children.length>=28]);res.push(['T5 uname map',uname2mail('Alice')==='alice@users.local']);console.table(res)}catch(e){log('自检异常：'+e.message)}})();
+    // ===== 自检（极简） =====
+    (function tests(){try{const res=[];res.push(['T1 date valid',isValidDateStr(datePick.value)]);const ds=fmt(todayDate());ensureDay(ds);const b=!!state.records[ds][0].done;setDone(ds,0,!b);const a=!!state.records[ds][0].done;setDone(ds,0,b);res.push(['T2 toggle ok',a===!b]);res.push(['T3 everyone can edit name',true]);res.push(['T4 month grid',monthGrid.children.length>=28]);console.table(res)}catch(e){log('自检异常：'+e.message)}})();
   })();
   </script>
 </body>
