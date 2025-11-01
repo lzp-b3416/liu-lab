@@ -326,13 +326,38 @@
                setCloudStatus(true,'在线 · 房间：'+ROOM)}
     };
 
+    // === 轮询回退（为中国部分网络/微信内核无法使用 WebSocket 的情况提供最终一致性） ===
+    const POLL_MS = 12000; // 可按需调节
+    let pollTimer = null;
+    async function pollOnce(){
+      if(!connected || !ROOM) return;
+      if(document.hidden) return;
+      if(isEditing()) return;
+      try{
+        const d=parseDate(datePick.value);
+        await Cloud.loadMonth(d.getFullYear(), d.getMonth()+1);
+        const ppl = await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');
+        if(!ppl.error && Array.isArray(ppl.data)){
+          const rows = ppl.data; const max = rows.length? Math.max.apply(null, rows.map(p=>p.ord)) : 0;
+          if(max>0){
+            const list = Array.from({length:max},(_,i)=>{ const f = rows.find(p=>p.ord===i+1); return (f&&f.name)? f.name : ('成员'+(i+1)); });
+            if(JSON.stringify(list)!==JSON.stringify(state.people)){
+              state.people = list; saveLocal(); scheduleRenderAll();
+            }
+          }
+        }
+      }catch(e){ log('poll异常:'+e.message); }
+    }
+    function startPoller(){ if(pollTimer) clearInterval(pollTimer); pollTimer = setInterval(pollOnce, POLL_MS); }
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) pollOnce(); });
+
     // ===== 初始化 =====
     try{
       loadLocal(); setDateInputToToday(datePick);
       if(roomIdInput)roomIdInput.value=ROOM; if(supaUrlInput)supaUrlInput.value=SUPA_URL; if(supaKeyInput)supaKeyInput.value=SUPA_KEY;
       if(AUTO&&$('cloudPanel')) $('cloudPanel').style.display='none';
       updateSyncLight();
-      (async()=>{const want=!(AUTO&&AUTO.autoconnect===false); if(SUPA_URL&&SUPA_KEY&&want){const ok=await Cloud.connect(); if(ok&&ROOM){await Cloud.hydrate(); Cloud.realtime();}}})();
+      (async()=>{const want=!(AUTO&&AUTO.autoconnect===false); if(SUPA_URL&&SUPA_KEY&&want){const ok=await Cloud.connect(); if(ok&&ROOM){await Cloud.hydrate(); Cloud.realtime(); startPoller(); await pollOnce(); }}})();
       renderAll();
     }catch(e){log('初始化异常：'+e.message)}
 
@@ -375,8 +400,12 @@
       alert('成员人数已更新为 '+n+' 人');
     });
 
-    // ===== 自检（极简） =====
-    (function tests(){try{const res=[];res.push(['T1 date valid',isValidDateStr(datePick.value)]);const ds=fmt(todayDate());ensureDay(ds);const b=!!state.records[ds][0].done;setDone(ds,0,!b);const a=!!state.records[ds][0].done;setDone(ds,0,b);res.push(['T2 toggle ok',a===!b]);res.push(['T3 everyone can edit name',true]);res.push(['T4 month grid',monthGrid.children.length>=28]);console.table(res)}catch(e){log('自检异常：'+e.message)}})();
+    // ===== 自检（极简 + 新增用例） =====
+    (function tests(){try{const res=[];res.push(['T1 date valid',isValidDateStr(datePick.value)]);const ds=fmt(todayDate());ensureDay(ds);const b=!!state.records[ds][0].done;setDone(ds,0,!b);const a=!!state.records[ds][0].done;setDone(ds,0,b);res.push(['T2 toggle ok',a===!b]);res.push(['T3 everyone can edit name',true]);res.push(['T4 month grid',monthGrid.children.length>=28]);
+      const wr=getWeekRange(new Date(2025,0,1));res.push(['T5 week has 7 days',(((wr.end-wr.start)/86400000)+1)===7]);
+      const bad=parseDate('not-a-date');res.push(['T6 parse fallback today',fmt(bad)===fmt(todayDate())]);
+      res.push(['T7 poll interval > 0',POLL_MS>0]);
+      console.table(res)}catch(e){log('自检异常：'+e.message)}})();
   })();
   </script>
 </body>
