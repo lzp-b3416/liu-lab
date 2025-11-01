@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -105,7 +106,7 @@
           <tr>
             <th style="width:56px">#</th>
             <th>姓名</th>
-            <th style="width:150px">今天</th>
+            <th style="width:150px">今天运动</th>
             <th style="width:220px">今日项目</th>
             <th class="right" style="width:120px">本周累计</th>
             <th class="right" style="width:120px">本月累计</th>
@@ -146,7 +147,7 @@
       <div id="monthView" style="display:none"><div class="calendar-grid" id="monthGrid"></div></div>
     </section>
 
-    <p class="footer">访客模式：任何人可编辑姓名/今日运动/项目；开启云同步后，所有人实时看到彼此改动。管理员（liulab/liulab）可修改成员人数（默认 29 人）。</p>
+    <p class="footer">访客模式：任何人可编辑姓名/今日运动/项目；开启云同步后，所有人实时看到彼此改动。管理员可修改成员人数（默认 29 人）。</p>
   </main>
 
   <div id="dbg" class="no-print" style="display:none"></div>
@@ -187,11 +188,6 @@
     if(AUTO&&AUTO.url&&AUTO.anon){SUPA_URL=AUTO.url;SUPA_KEY=AUTO.anon;localStorage.setItem('supa_url',SUPA_URL);localStorage.setItem('supa_key',SUPA_KEY);if(!ROOM&&AUTO.defaultRoom){ROOM=AUTO.defaultRoom;localStorage.setItem('room_id',ROOM)}}
 
     let sb=null, connected=false;
-    // —— Realtime 健壮性变量：用于诊断 + 回退 ——
-    let lastRealtimeAt = 0;   // 最近一次收到服务端变更的时间戳（ms）
-    let lastHydrateAt  = 0;   // 最近一次全量拉取的时间戳（ms）
-    // 暴露一个简易诊断函数（F12 控制台执行 window.__diag() 查看状态）
-    window.__diag = () => ({ connected, ROOM, lastRealtimeAt, lastHydrateAt });
     let isAdmin=false; // 仅前端门禁：liulab/liulab
 
     // ===== 本地存取 =====
@@ -339,22 +335,7 @@
       if(roomIdInput)roomIdInput.value=ROOM; if(supaUrlInput)supaUrlInput.value=SUPA_URL; if(supaKeyInput)supaKeyInput.value=SUPA_KEY;
       if(AUTO&&$('cloudPanel')) $('cloudPanel').style.display='none';
       updateSyncLight();
-      (async()=>{const want=!(AUTO&&AUTO.autoconnect===false); if(SUPA_URL&&SUPA_KEY&&want){const ok=await Cloud.connect(); if(ok&&ROOM){await Cloud.hydrate(); Cloud.realtime();}})})();
-      // —— 周期性兜底：每 20s 主动全量拉取一次，避免因网络/后台挂起错过实时事件 ——
-      setInterval(async()=>{
-        if(!connected || !ROOM) return;
-        await Cloud.hydrate();
-        lastHydrateAt = Date.now();
-      }, 20000);
-
-      // 页面从后台回到前台时，做一次轻量拉取
-      document.addEventListener('visibilitychange', async()=>{
-        if(!document.hidden && connected && ROOM){
-          await Cloud.hydrate();
-          lastHydrateAt = Date.now();
-        }
-      });
-
+      (async()=>{const want=!(AUTO&&AUTO.autoconnect===false); if(SUPA_URL&&SUPA_KEY&&want){const ok=await Cloud.connect(); if(ok&&ROOM){await Cloud.hydrate(); Cloud.realtime();}}})();
       renderAll();
     }catch(e){log('初始化异常：'+e.message)}
 
