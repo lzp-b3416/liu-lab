@@ -825,7 +825,7 @@
         res.push(['T8 cloud.patchRecord exists', typeof Cloud.patchRecord === 'function']);
         // T9：本地逻辑回归测试——切换 done 不影响 item
         const ds2 = fmt(todayDate()); ensureDay(ds2);
-        setItem(ds2, 1, '羽毛球1h');
+        setItem(ds2, 1, '');
         setDone(ds2, 1, true);
         const itemBefore = getItem(state.records[ds2][1]);
         setDone(ds2, 1, false);
