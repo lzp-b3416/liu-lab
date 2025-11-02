@@ -616,9 +616,20 @@
         if(r.error) log('写记录失败:'+r.error.message);
       },
       async patchRecord(ds,idx,fields){
-        const row = Object.assign({ room_id:ROOM, date:ds, ord:idx+1 }, fields);
-        const r = await sb.from('records').upsert(row, { onConflict:'room_id,date,ord' });
-        if(r.error) log('写记录失败:'+r.error.message);
+        // 先尝试“只改指定字段”的 UPDATE；若不存在记录再 INSERT，避免误把未提供字段清空
+        const sel = { room_id: ROOM, date: ds, ord: idx+1 };
+        let r = await sb.from('records')
+          .update(fields)
+          .match(sel)
+          .select('date,ord,done,item')
+          .maybeSingle();
+        if(r.error && r.error.code !== 'PGRST116'){ log('更新记录失败:'+r.error.message); return; }
+        if(!r.data){
+          // 没有记录才插入；未提供的字段使用默认值（避免覆盖已有值的场景）
+          const row = Object.assign({ room_id: ROOM, date: ds, ord: idx+1, done: false, item: '' }, fields);
+          const ins = await sb.from('records').insert(row);
+          if(ins.error) log('插入记录失败:'+ins.error.message);
+        }
       },
       realtime(){
         sb.channel('realtime:records')
@@ -755,6 +766,23 @@
     tabWeek.addEventListener('click', function(){ setTab('week'); });
     tabMonth.addEventListener('click', function(){ setTab('month'); });
     personSelect.addEventListener('change', function(){ renderWeek(); renderMonth(); });
+    // 连接 Supabase（手动）
+    connectBtn.addEventListener('click', async function(){
+      ROOM = (roomIdInput.value||'').trim();
+      SUPA_URL = (supaUrlInput.value||'').trim();
+      SUPA_KEY = (supaKeyInput.value||'').trim();
+      localStorage.setItem('room_id', ROOM);
+      localStorage.setItem('supa_url', SUPA_URL);
+      localStorage.setItem('supa_key', SUPA_KEY);
+      const ok = await Cloud.connect();
+      if(ok && ROOM){
+        await Cloud.hydrate();
+        Cloud.realtime();
+        startPoller();
+        await pollOnce();
+        renderAll();
+      }
+    });
 
     // 管理员登录（前端门禁）
     admLogin.addEventListener('click', function(){
@@ -795,6 +823,13 @@
         res.push(['T6 parse fallback today', fmt(bad) === fmt(todayDate())]);
         res.push(['T7 poll interval > 0', 12000 > 0]);
         res.push(['T8 cloud.patchRecord exists', typeof Cloud.patchRecord === 'function']);
+        // T9：本地逻辑回归测试——切换 done 不影响 item
+        const ds2 = fmt(todayDate()); ensureDay(ds2);
+        setItem(ds2, 1, '羽毛球1h');
+        setDone(ds2, 1, true);
+        const itemBefore = getItem(state.records[ds2][1]);
+        setDone(ds2, 1, false);
+        res.push(['T9 item preserved when toggling done', getItem(state.records[ds2][1]) === itemBefore]);
         console.table(res);
       } catch(e){ log('自检异常：'+e.message); }
     })();
