@@ -57,17 +57,27 @@
     .live-green{background:#10b981;color:#10b981}
     .live-red{background:#ef4444;color:#ef4444}
     /* 移动端：表格两行布局 */
-    @media (max-width:768px){#peopleTable thead{display:none}.table td{padding:8px 6px}.stack-label{display:inline-block;color:var(--muted);font-size:12px;margin-right:6px}.row-split + .row-split td{border-top:none}}
+    @media (max-width:768px){
+      #peopleTable thead{display:none}
+      .table td{padding:8px 6px}
+      .stack-label{display:inline-block;color:var(--muted);font-size:12px;margin-right:6px}
+      .row-split + .row-split td{border-top:none}
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 2v2M16 2v2M3 9h18M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#9fb4ff" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M8 2v2M16 2v2M3 9h18M5 5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="#9fb4ff" stroke-width="1.3" stroke-linecap="round"/>
+        </svg>
         <h1>Liu Lab每日运动打卡</h1>
         <span class="muted">无需登录：任何人可改姓名/今日运动/项目；管理员可改成员人数</span>
-        <span class="live-wrap" title="云同步状态"><span class="muted">云同步</span><span id="syncLight" class="live-light live-red" aria-label="未开启"></span></span>
+        <span class="live-wrap" title="云同步状态">
+          <span class="muted">云同步</span>
+          <span id="syncLight" class="live-light live-red" aria-label="未开启"></span>
+        </span>
       </div>
       <div class="bar">
         <div class="controls card">
@@ -85,13 +95,16 @@
           <label>URL <input id="supaUrl" type="text" placeholder="https://xxx.supabase.co" style="width:220px"></label>
           <label>Anon <input id="supaKey" type="password" placeholder="匿名密钥" style="width:220px"></label>
           <button id="connectCloud">连接</button>
-          <span class="status"><span id="cloudDot" class="status-dot dot-off"></span><span id="cloudStatus" class="muted">离线</span></span>
+          <span class="status">
+            <span id="cloudDot" class="status-dot dot-off"></span>
+            <span id="cloudStatus" class="muted">离线</span>
+          </span>
         </div>
         <!-- 管理员面板：仅用于“成员人数”控制，账号/密码：liulab/liulab -->
         <div class="controls card no-print" id="adminPanel">
           <span class="muted">管理员</span>
-          <label>账号 <input id="admUser" type="text" placeholder="" style="width:140px"></label>
-          <label>密码 <input id="admPass" type="password" placeholder="" style="width:140px"></label>
+          <label>账号 <input id="admUser" type="text" style="width:140px"></label>
+          <label>密码 <input id="admPass" type="password" style="width:140px"></label>
           <button id="admLogin">登录</button>
           <button id="admLogout">退出</button>
           <span id="adminInfo" class="pill">访客模式</span>
@@ -149,10 +162,15 @@
           <tbody><tr id="weekBodyRow"></tr></tbody>
         </table>
       </div>
-      <div id="monthView" style="display:none"><div class="calendar-grid" id="monthGrid"></div></div>
+      <div id="monthView" style="display:none">
+        <div class="calendar-grid" id="monthGrid"></div>
+      </div>
     </section>
 
-    <p class="footer">访客模式：任何人可编辑姓名/今日运动/项目；开启云同步后，所有人实时看到彼此改动。管理员可修改成员人数（默认 29 人）。</p>
+    <p class="footer">
+      访客模式：任何人可编辑姓名/今日运动/项目；开启云同步后，所有人实时看到彼此改动。
+      管理员可修改成员人数（默认 29 人）。
+    </p>
   </main>
 
   <div id="dbg" class="no-print" style="display:none"></div>
@@ -326,9 +344,28 @@
         state.records[ds] = cur.map(e => isEntry(e) ? e : {done:!!e,item:''});
       }
     }
-    function setDone(ds,i,v){ ensureDay(ds); state.records[ds][i].done = !!v; saveLocal(); if(connected && ROOM){ Cloud.patchRecord(ds,i,{done:!!v}); } }
-    function setItem(ds,i,t){ ensureDay(ds); state.records[ds][i].item = String(t||''); saveLocal(); if(connected && ROOM){ Cloud.patchRecord(ds,i,{item:String(t||'')}); } }
-    function rangeCount(i,st,ed){ let c=0, d=cloneDate(st); while(d<=ed){ const k=fmt(d); const a=state.records[k]; if(a && a[i] && getDone(a[i])) c++; d.setDate(d.getDate()+1);} return c; }
+    function setDone(ds,i,v){
+      ensureDay(ds);
+      state.records[ds][i].done = !!v;
+      saveLocal();
+      if(connected && ROOM){ Cloud.patchRecord(ds,i,{done:!!v}); }
+    }
+    function setItem(ds,i,t){
+      ensureDay(ds);
+      state.records[ds][i].item = String(t||'');
+      saveLocal();
+      if(connected && ROOM){ Cloud.patchRecord(ds,i,{item:String(t||'')}); }
+    }
+    function rangeCount(i,st,ed){
+      let c=0, d=cloneDate(st);
+      while(d<=ed){
+        const k=fmt(d);
+        const a=state.records[k];
+        if(a && a[i] && getDone(a[i])) c++;
+        d.setDate(d.getDate()+1);
+      }
+      return c;
+    }
 
     const canEditName = () => true; // 所有人可改名
 
@@ -337,7 +374,8 @@
       const ds = isValidDateStr(datePick.value) ? datePick.value : fmt(todayDate());
       const arr = state.records[ds] || [];
       const done = arr.filter(e => getDone(e)).length;
-      todaySummary.innerHTML = `本日完成：<b style="color:${getComputedStyle(document.documentElement).getPropertyValue('--ok')}">${done}</b> / ${state.people.length}`;
+      todaySummary.innerHTML =
+        `本日完成：<b style="color:${getComputedStyle(document.documentElement).getPropertyValue('--ok')}">${done}</b> / ${state.people.length}`;
     }
 
     function buildSwitch(checked, on){
@@ -425,7 +463,8 @@
         }
       }
 
-      todaySummary.innerHTML = `本日完成：<b style="color:${getComputedStyle(document.documentElement).getPropertyValue('--ok')}">${doneCount}</b> / ${state.people.length}`;
+      todaySummary.innerHTML =
+        `本日完成：<b style="color:${getComputedStyle(document.documentElement).getPropertyValue('--ok')}">${doneCount}</b> / ${state.people.length}`;
       updateAdminUI();
     }
 
@@ -496,11 +535,20 @@
           const entry = state.records[k][idx];
           const done = getDone(entry); const note = getItem(entry);
           const top = document.createElement('div'); top.className='cal-date'; top.textContent = CN_WEEK[d.getDay()]+' '+pad2(m+1)+'-'+pad2(day); cell.appendChild(top);
-          const mark = document.createElement('div'); mark.className='cal-mark'; mark.innerHTML = (done?'<span class="mark-done">✔</span>':'') + (note?'<span class="mark-note">✎</span>':''); cell.appendChild(mark);
+          const mark = document.createElement('div'); mark.className='cal-mark'; mark.innerHTML =
+            (done?'<span class="mark-done">✔</span>':'') + (note?'<span class="mark-note">✎</span>':'');
+          cell.appendChild(mark);
           const acts = document.createElement('div'); acts.className='cal-actions';
-          const bt1 = document.createElement('button'); bt1.className='tiny'; bt1.textContent = done ? '取消运动' : '标记运动'; bt1.addEventListener('click', function(){ setDone(k,idx,!done); renderMonth(); renderSummary(); });
-          const bt2 = document.createElement('button'); bt2.className='tiny'; bt2.textContent = note ? '编辑项目' : '填写项目'; bt2.addEventListener('click', function(){ const txt = prompt(k+' 项目：', note); if(txt !== null){ setItem(k,idx,txt); renderMonth(); } });
-          acts.appendChild(bt1); acts.appendChild(bt2); cell.appendChild(acts);
+          const bt1 = document.createElement('button'); bt1.className='tiny'; bt1.textContent = done ? '取消运动' : '标记运动';
+          bt1.addEventListener('click', function(){ setDone(k,idx,!done); renderMonth(); renderSummary(); });
+          const bt2 = document.createElement('button'); bt2.className='tiny'; bt2.textContent = note ? '编辑项目' : '填写项目';
+          bt2.addEventListener('click', function(){
+            const txt = prompt(k+' 项目：', note);
+            if(txt !== null){ setItem(k,idx,txt); renderMonth(); }
+          });
+          acts.appendChild(bt1);
+          acts.appendChild(bt2);
+          cell.appendChild(acts);
         } else {
           cell.style.visibility = 'hidden';
         }
@@ -538,20 +586,38 @@
 
     const Cloud = {
       async connect(){
-        if(!SUPA_URL || !SUPA_KEY){ setCloudStatus(false,'离线（未配置）'); return false; }
+        if(!SUPA_URL || !SUPA_KEY){
+          setCloudStatus(false,'离线（未配置）');
+          return false;
+        }
         try {
           sb = supabase.createClient(SUPA_URL, SUPA_KEY);
           const probe = await sb.from('people').select('room_id', { head:true, count:'exact' }).limit(1);
-          if(probe.error){ setCloudStatus(false,'连接失败：'+probe.error.message); return false; }
-          connected = true; setCloudStatus(true, ROOM ? ('在线 · 房间：'+ROOM) : '在线（未入房间）');
+          if(probe.error){
+            setCloudStatus(false,'连接失败：'+probe.error.message);
+            return false;
+          }
+          connected = true;
+          setCloudStatus(true, ROOM ? ('在线 · 房间：'+ROOM) : '在线（未入房间）');
           return true;
-        } catch(e){ setCloudStatus(false,'异常：'+e.message); return false; }
+        } catch(e){
+          setCloudStatus(false,'异常：'+e.message);
+          return false;
+        }
       },
       async hydrate(){
         try {
-          const ppl = await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');
-          const rows = ppl.data;
-          if(rows && rows.length){
+          const ppl = await sb.from('people')
+            .select('ord,name')
+            .eq('room_id', ROOM)
+            .order('ord');
+
+          if (ppl.error) {
+            log('拉取 people 失败: ' + ppl.error.message);
+          }
+
+          const rows = ppl.data || [];
+          if(rows.length){
             const max = Math.max.apply(null, rows.map(function(p){ return p.ord; }));
             state.people = Array.from({length:max}, function(_,i){
               const f = rows.find(function(p){ return p.ord === i+1; });
@@ -612,30 +678,45 @@
         saveLocal();
       },
       async upsertRecord(ds,idx,entry){
-        const r = await sb.from('records').upsert({ room_id:ROOM, date:ds, ord:idx+1, done:!!entry.done, item: entry.item||'' }, { onConflict:'room_id,date,ord' });
+        const r = await sb.from('records').upsert({
+          room_id:ROOM,
+          date:ds,
+          ord:idx+1,
+          done:!!entry.done,
+          item: entry.item||''
+        }, { onConflict:'room_id,date,ord' });
         if(r.error) log('写记录失败:'+r.error.message);
       },
       async patchRecord(ds,idx,fields){
-        // 先尝试“只改指定字段”的 UPDATE；若不存在记录再 INSERT，避免误把未提供字段清空
-        const sel = { room_id: ROOM, date: ds, ord: idx+1 };
-        let r = await sb.from('records')
-          .update(fields)
-          .match(sel)
-          .select('date,ord,done,item')
-          .maybeSingle();
-        if(r.error && r.error.code !== 'PGRST116'){ log('更新记录失败:'+r.error.message); return; }
-        if(!r.data){
-          // 没有记录才插入；未提供的字段使用默认值（避免覆盖已有值的场景）
-          const row = Object.assign({ room_id: ROOM, date: ds, ord: idx+1, done: false, item: '' }, fields);
-          const ins = await sb.from('records').insert(row);
-          if(ins.error) log('插入记录失败:'+ins.error.message);
+        if (!sb || !ROOM) return;
+        try {
+          const payload = {
+            p_room_id: ROOM,
+            p_date: ds,
+            p_ord: idx + 1,
+            p_done: Object.prototype.hasOwnProperty.call(fields, 'done') ? !!fields.done : null,
+            p_item: Object.prototype.hasOwnProperty.call(fields, 'item') ? String(fields.item || '') : null
+          };
+          const { error } = await sb.rpc('patch_record', payload);
+          if (error) {
+            log('patch_record 失败: ' + error.message);
+          }
+        } catch (e) {
+          log('patchRecord 异常: ' + e.message);
         }
       },
       realtime(){
         sb.channel('realtime:records')
-          .on('postgres_changes', { event:'*', schema:'public', table:'records', filter:'room_id=eq.'+ROOM }, function(payload){
+          .on('postgres_changes', {
+            event:'*',
+            schema:'public',
+            table:'records',
+            filter:'room_id=eq.'+ROOM
+          }, function(payload){
             const r = payload.new || payload.old; if(!r) return;
-            const k = r.date; ensureDay(k); const idx = r.ord-1;
+            const k = r.date;
+            ensureDay(k);
+            const idx = r.ord-1;
             if(payload.eventType === 'DELETE'){
               state.records[k][idx] = { done:false, item:'' };
             } else {
@@ -657,20 +738,18 @@
         sb.channel('realtime:people')
           .on('postgres_changes',
             { event: '*', schema: 'public', table: 'people', filter: 'room_id=eq.' + ROOM },
-             (payload) => {
+            (payload) => {
               const row = payload.new || payload.old;
               if (!row) return;
               const idx = row.ord - 1;
               if (idx < 0) return;
               if (!state.people[idx]) state.people[idx] = '成员' + (idx + 1);
-              // 这里只处理名字即可
               if (row.name) state.people[idx] = row.name;
               saveLocal();
               scheduleRenderAll();
             }
           )
           .subscribe();
-
 
         setCloudStatus(true, '在线 · 房间：'+ROOM);
       }
@@ -702,8 +781,13 @@
         }
       } catch(e){ log('poll异常:'+e.message); }
     }
-    function startPoller(){ if(pollTimer) clearInterval(pollTimer); pollTimer = setInterval(pollOnce, POLL_MS); }
-    document.addEventListener('visibilitychange', function(){ if(!document.hidden) pollOnce(); });
+    function startPoller(){
+      if(pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(pollOnce, POLL_MS);
+    }
+    document.addEventListener('visibilitychange', function(){
+      if(!document.hidden) pollOnce();
+    });
 
     // ===== 初始化 =====
     try {
@@ -746,17 +830,51 @@
     if(window.visualViewport){ window.visualViewport.addEventListener('resize', onAnyResize); }
     window.addEventListener('orientationchange', function(){ setTimeout(scheduleRenderAll, 300); });
 
-    $('prevDay').addEventListener('click', function(){ const d = parseDate(datePick.value); d.setDate(d.getDate()-1); datePick.value = fmt(d); scheduleRenderAll(); });
-    $('nextDay').addEventListener('click', function(){ const d = parseDate(datePick.value); d.setDate(d.getDate()+1); datePick.value = fmt(d); scheduleRenderAll(); });
-    $('goToday').addEventListener('click', function(){ setDateInputToToday(datePick); scheduleRenderAll(); });
-    datePick.addEventListener('change', function(){ if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick); scheduleRenderAll(); });
+    $('prevDay').addEventListener('click', function(){
+      const d = parseDate(datePick.value);
+      d.setDate(d.getDate()-1);
+      datePick.value = fmt(d);
+      scheduleRenderAll();
+    });
+    $('nextDay').addEventListener('click', function(){
+      const d = parseDate(datePick.value);
+      d.setDate(d.getDate()+1);
+      datePick.value = fmt(d);
+      scheduleRenderAll();
+    });
+    $('goToday').addEventListener('click', function(){
+      setDateInputToToday(datePick);
+      scheduleRenderAll();
+    });
+    datePick.addEventListener('change', function(){
+      if(!isValidDateStr(datePick.value)) setDateInputToToday(datePick);
+      scheduleRenderAll();
+    });
 
-    $('prevWeek').addEventListener('click', function(){ weekRef.setDate(weekRef.getDate()-7); renderWeek(); });
-    $('nextWeek').addEventListener('click', function(){ weekRef.setDate(weekRef.getDate()+7); renderWeek(); });
-    $('thisWeek').addEventListener('click', function(){ weekRef = todayDate(); renderWeek(); });
-    $('prevMonth').addEventListener('click', function(){ monthRef.setMonth(monthRef.getMonth()-1); renderMonth(); });
-    $('nextMonth').addEventListener('click', function(){ monthRef.setMonth(monthRef.getMonth()+1); renderMonth(); });
-    $('thisMonth').addEventListener('click', function(){ monthRef = todayDate(); renderMonth(); });
+    $('prevWeek').addEventListener('click', function(){
+      weekRef.setDate(weekRef.getDate()-7);
+      renderWeek();
+    });
+    $('nextWeek').addEventListener('click', function(){
+      weekRef.setDate(weekRef.getDate()+7);
+      renderWeek();
+    });
+    $('thisWeek').addEventListener('click', function(){
+      weekRef = todayDate();
+      renderWeek();
+    });
+    $('prevMonth').addEventListener('click', function(){
+      monthRef.setMonth(monthRef.getMonth()-1);
+      renderMonth();
+    });
+    $('nextMonth').addEventListener('click', function(){
+      monthRef.setMonth(monthRef.getMonth()+1);
+      renderMonth();
+    });
+    $('thisMonth').addEventListener('click', function(){
+      monthRef = todayDate();
+      renderMonth();
+    });
 
     function setTab(which){
       if(which === 'week'){
@@ -777,7 +895,11 @@
     }
     tabWeek.addEventListener('click', function(){ setTab('week'); });
     tabMonth.addEventListener('click', function(){ setTab('month'); });
-    personSelect.addEventListener('change', function(){ renderWeek(); renderMonth(); });
+    personSelect.addEventListener('change', function(){
+      renderWeek();
+      renderMonth();
+    });
+
     // 连接 Supabase（手动）
     connectBtn.addEventListener('click', async function(){
       ROOM = (roomIdInput.value||'').trim();
@@ -800,21 +922,40 @@
     admLogin.addEventListener('click', function(){
       const u = (admUser.value||'').trim();
       const p = (admPass.value||'').trim();
-      if(u==='liulab' && p==='liulab'){ isAdmin = true; updateAdminUI(); alert('管理员登录成功'); }
-      else { alert('账号或密码错误'); }
+      if(u==='liulab' && p==='liulab'){
+        isAdmin = true;
+        updateAdminUI();
+        alert('管理员登录成功');
+      } else {
+        alert('账号或密码错误');
+      }
     });
-    admLogout.addEventListener('click', function(){ isAdmin=false; updateAdminUI(); });
+    admLogout.addEventListener('click', function(){
+      isAdmin=false;
+      updateAdminUI();
+    });
 
     // 管理员设置人数
     applyPeopleCount.addEventListener('click', async function(){
-      if(!isAdmin){ alert('请先以管理员登录'); return; }
+      if(!isAdmin){
+        alert('请先以管理员登录');
+        return;
+      }
       const n = parseInt(peopleCount.value,10);
-      if(!Number.isFinite(n) || n < 1){ alert('人数必须是正整数'); return; }
+      if(!Number.isFinite(n) || n < 1){
+        alert('人数必须是正整数');
+        return;
+      }
       const prev = state.people.length;
-      if(n === prev){ alert('人数未变化'); return; }
+      if(n === prev){
+        alert('人数未变化');
+        return;
+      }
       const old = state.people.slice();
       const list = Array.from({length:n}, function(_,i){ return old[i] || ('成员'+(i+1)); });
-      state.people = list; saveLocal(); scheduleRenderAll();
+      state.people = list;
+      saveLocal();
+      scheduleRenderAll();
       if(connected && ROOM){ await Cloud.applyPeopleCount(prev); }
       alert('成员人数已更新为 '+n+' 人');
     });
@@ -825,15 +966,18 @@
         const res = [];
         res.push(['T1 date valid', isValidDateStr(datePick.value)]);
         const ds = fmt(todayDate()); ensureDay(ds);
-        const b = !!state.records[ds][0].done; setDone(ds,0,!b); const a = !!state.records[ds][0].done; setDone(ds,0,b);
+        const b = !!state.records[ds][0].done;
+        setDone(ds,0,!b);
+        const a = !!state.records[ds][0].done;
+        setDone(ds,0,b);
         res.push(['T2 toggle ok', a === !b]);
-        res.push(['T3 everyone can edit name', true]);
+        res.push(['T3 everyone可以改名', true]);
         res.push(['T4 month grid', monthGrid.children.length >= 28]);
         const wr = getWeekRange(new Date(2025,0,1));
         res.push(['T5 week has 7 days', (((wr.end-wr.start)/86400000)+1) === 7]);
         const bad = parseDate('not-a-date');
         res.push(['T6 parse fallback today', fmt(bad) === fmt(todayDate())]);
-        res.push(['T7 poll interval > 0', 12000 > 0]);
+        res.push(['T7 poll interval > 0', POLL_MS > 0]);
         res.push(['T8 cloud.patchRecord exists', typeof Cloud.patchRecord === 'function']);
         // T9：本地逻辑回归测试——切换 done 不影响 item
         const ds2 = fmt(todayDate()); ensureDay(ds2);
