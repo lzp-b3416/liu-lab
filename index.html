@@ -648,34 +648,47 @@
         if(r.error) log('更名失败:'+r.error.message);
       },
       async loadMonth(y,m){
-        const ym = String(m).padStart(2,'0');
-        const from = `${y}-${ym}-01`;
-        const to   = `${y}-${ym}-31`;
-        const q = await sb.from('records').select('date,ord,done,item').eq('room_id',ROOM).gte('date',from).lte('date',to);
-        if(q.error){
-          log('拉取记录失败：'+q.error.message);
+        // m 是 1-12，这里算出当月的第一天和最后一天
+        const first = new Date(y, m - 1, 1);
+        const last  = new Date(y, m, 0); // 下个月第 0 天 = 本月最后一天
+
+        const from = fmt(first);      // 例如 2025-03-01
+        const to   = fmt(last);       // 例如 2025-03-31 或 2025-02-28
+
+        const q = await sb
+          .from('records')
+          .select('date,ord,done,item')
+          .eq('room_id', ROOM)
+          .gte('date', from)
+          .lte('date', to);
+
+        if (q.error) {
+          log('拉取记录失败：' + q.error.message);
           return;
         }
-        const d0 = new Date(y, m-1, 1);
-        const last = new Date(y, m, 0);
+
         const by = {};
-        q.data.forEach(function(r){
-          const k = ''+r.date;
+        (q.data || []).forEach(function(r){
+          const k = '' + r.date;  // r.date 会是 'YYYY-MM-DD'
           const a = by[k] || [];
-          a[r.ord-1] = { done: !!r.done, item: r.item || '' };
+          a[r.ord - 1] = { done: !!r.done, item: r.item || '' };
           by[k] = a;
         });
-        const cur = new Date(d0);
-        while(cur <= last){
+
+        const cur = new Date(first);
+        while (cur <= last) {
           const k = fmt(cur);
           const n = state.people.length;
           const arr = Array.from({length:n}, () => ({done:false,item:''}));
           const has = by[k] || [];
-          for(let j=0;j<n;j++){ if(has[j]) arr[j] = has[j]; }
+          for (let j = 0; j < n; j++) {
+            if (has[j]) arr[j] = has[j];
+          }
           state.records[k] = arr;
-          cur.setDate(cur.getDate()+1);
+          cur.setDate(cur.getDate() + 1);
         }
         saveLocal();
+        log('loadMonth 完成：' + from + ' ~ ' + to + ' 记录数=' + (q.data || []).length);
       },
       async upsertRecord(ds,idx,entry){
         const r = await sb.from('records').upsert({
@@ -765,6 +778,11 @@
       try {
         const d = parseDate(datePick.value);
         await Cloud.loadMonth(d.getFullYear(), d.getMonth()+1);
+
+        // 关键：拉完记录以后，直接刷新界面
+        scheduleRenderAll();
+
+        // 再顺带同步一下 people（如果名字有改动）
         const ppl = await sb.from('people').select('ord,name').eq('room_id',ROOM).order('ord');
         if(!ppl.error && Array.isArray(ppl.data)){
           const rows = ppl.data;
@@ -775,7 +793,9 @@
               return (f && f.name) ? f.name : ('成员'+(i+1));
             });
             if(JSON.stringify(list) !== JSON.stringify(state.people)){
-              state.people = list; saveLocal(); scheduleRenderAll();
+              state.people = list;
+              saveLocal();
+              scheduleRenderAll();
             }
           }
         }
