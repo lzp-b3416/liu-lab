@@ -655,10 +655,22 @@
           .subscribe();
 
         sb.channel('realtime:people')
-          .on('postgres_changes', { event:'*', schema:'public', table:'people', filter:'room_id=eq.'+ROOM }, function(){
-            scheduleRenderAll();
-          })
+          .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'people', filter: 'room_id=eq.' + ROOM },
+             (payload) => {
+              const row = payload.new || payload.old;
+              if (!row) return;
+              const idx = row.ord - 1;
+              if (idx < 0) return;
+              if (!state.people[idx]) state.people[idx] = '成员' + (idx + 1);
+              // 这里只处理名字即可
+              if (row.name) state.people[idx] = row.name;
+              saveLocal();
+              scheduleRenderAll();
+            }
+          )
           .subscribe();
+
 
         setCloudStatus(true, '在线 · 房间：'+ROOM);
       }
